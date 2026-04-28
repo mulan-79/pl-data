@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DART 재무정보 조회 시스템</title>
+    <title>업종별 재무현황</title>
     <style>
         * {
             margin: 0;
@@ -305,6 +305,430 @@
             font-weight: 600;
         }
 
+        .main-content {
+            background: #f5f6fa;
+        }
+
+        .control-panel {
+            border: 1px solid #dfe4f1;
+            background: #ffffff;
+        }
+
+        .results-section {
+            border: 1px solid #dfe4f1;
+            background: #ffffff;
+        }
+
+        .company-info {
+            background: #f8f9fd;
+            border-left: 4px solid #5967ff;
+        }
+
+        .company-info h3 {
+            font-size: 1.35em;
+        }
+
+        .stat-cards {
+            gap: 14px;
+            margin: 18px 0;
+        }
+
+        .stat-card {
+            border: 1px solid #e2e6f3;
+            padding: 18px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+        }
+
+        .financial-table {
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+            border: 1px solid #e2e6f3;
+        }
+
+        .financial-table th {
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 12px;
+            padding: 10px 8px;
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+        }
+
+        .financial-table td {
+            padding: 9px 8px;
+            border-bottom: 1px solid #ebeff8;
+            border-right: 1px solid #ebeff8;
+            white-space: nowrap;
+        }
+
+        .financial-table tbody tr:nth-child(even) {
+            background: #fbfcff;
+        }
+
+        .financial-table tbody tr.clickable-row {
+            cursor: pointer;
+        }
+
+        .financial-table tbody tr.selected-row {
+            background: #e8f1ff !important;
+            box-shadow: inset 0 0 0 1px #9ec2ff;
+        }
+
+        .financial-table td:first-child,
+        .financial-table th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: inherit;
+        }
+
+        .financial-table th:first-child {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .company-info {
+            overflow-x: auto;
+        }
+
+        body {
+            background: #eceef3;
+            color: #1a2b43;
+        }
+
+        .container {
+            border-radius: 14px;
+            box-shadow: 0 14px 42px rgba(17, 33, 61, 0.14);
+            overflow: hidden;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(90deg, #0f2548 0%, #123563 100%);
+            padding: 14px 22px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: #6fb5ff;
+            color: #0f2548;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .topbar h1 {
+            margin: 0;
+            font-size: 17px;
+            color: #eef5ff;
+            text-shadow: none;
+        }
+
+        .subtitle {
+            margin-top: 2px;
+            font-size: 12px;
+            color: #c2d7f8;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chip {
+            padding: 7px 12px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            color: #e4efff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .chip-live {
+            background: rgba(22, 196, 127, 0.16);
+            color: #81f2c5;
+            border: 1px solid rgba(129, 242, 197, 0.35);
+        }
+
+        .header-select {
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            color: #e4efff;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            padding-right: 24px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23c2d7f8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+        }
+
+        .header-select:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .header-select option {
+            background: #0f2548;
+            color: #eef5ff;
+        }
+
+        .brand-icon {
+            width: 34px !important;
+            height: 34px !important;
+            border-radius: 8px !important;
+            background: rgba(111, 181, 255, 0.15) !important;
+            border: 1px solid rgba(111, 181, 255, 0.3);
+        }
+
+        .main-content {
+            background: #f3f5f8;
+            padding: 20px;
+        }
+
+        .control-panel {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr 1.2fr 1.2fr auto;
+            gap: 12px;
+            align-items: end;
+            padding: 14px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            background: #f9fbff;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        label {
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: #4d617e;
+        }
+
+        select {
+            padding: 10px 12px;
+            border-radius: 9px;
+            border: 1px solid #d2ddf1;
+            font-size: 14px;
+        }
+
+        .button-group {
+            margin-top: 0;
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 10px;
+        }
+
+        button {
+            text-transform: none;
+            letter-spacing: 0;
+            font-size: 14px;
+            padding: 10px 14px;
+            border-radius: 9px;
+            white-space: nowrap;
+        }
+
+        .button-group button {
+            flex: 0 0 auto;
+            min-width: 110px;
+        }
+
+        .results-section {
+            border: none;
+            padding: 0;
+            background: transparent;
+        }
+
+        .results-section h2 {
+            margin: 0 0 8px;
+            border: 0;
+            padding: 0;
+            font-size: 20px;
+            color: #1c3152;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .kpi-card {
+            background: white;
+            border: 1px solid #dde5f3;
+            border-radius: 10px;
+            padding: 14px 16px;
+            box-shadow: 0 3px 12px rgba(14, 30, 55, 0.06);
+        }
+
+        .kpi-title {
+            color: #60738f;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 34px;
+            font-weight: 800;
+            color: #122c55;
+            line-height: 1;
+        }
+
+        .kpi-delta {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .panel-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .panel {
+            background: white;
+            border: 1px solid #dde5f3;
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1f3557;
+            margin-bottom: 10px;
+        }
+
+        .chart-box {
+            display: flex;
+            align-items: flex-end;
+            gap: 16px;
+            height: 230px;
+            border-top: 1px dashed #d6deec;
+            padding-top: 16px;
+        }
+
+        .q-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bars {
+            height: 170px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 6px;
+        }
+
+        .bar {
+            width: 18px;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .bar-rev {
+            background: #122d56;
+        }
+
+        .bar-op {
+            background: #66a9ff;
+        }
+
+        .q-label {
+            font-size: 12px;
+            color: #5f738f;
+            font-weight: 700;
+        }
+
+        .table-compact {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .table-compact th,
+        .table-compact td {
+            padding: 9px 8px;
+            border-bottom: 1px solid #e8edf6;
+            text-align: right;
+        }
+
+        .table-compact th:first-child,
+        .table-compact td:first-child {
+            text-align: left;
+        }
+
+        .ratio-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .ratio-item {
+            background: #f8fbff;
+            border: 1px solid #dfebff;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        .ratio-item strong {
+            display: block;
+            font-size: 22px;
+            margin-top: 6px;
+            color: #0f2b52;
+        }
+
+        .data-table-wrap {
+            margin-top: 12px;
+            background: white;
+            border: 1px solid #dde5f3;
+            border-radius: 12px;
+            padding: 12px;
+            overflow: auto;
+        }
+
+        .hint-card {
+            margin-top: 10px;
+            background: #f8fbff;
+            border: 1px dashed #c9d9f3;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #4f6689;
+            font-size: 13px;
+        }
+
+        .financial-table th {
+            background: #16345f;
+        }
+
         @media (max-width: 768px) {
             .container {
                 border-radius: 0;
@@ -325,27 +749,54 @@
             .info-grid {
                 grid-template-columns: 1fr;
             }
+
+            .topbar {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .control-panel,
+            .dashboard-grid,
+            .panel-grid,
+            .ratio-row {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>📊 DART 재무정보 조회 시스템</h1>
-            <p class="subtitle">금융감독원 전자공시시스템 API 기반 상장사 재무정보 분석</p>
+        <header class="topbar">
+            <div class="brand">
+                <span class="brand-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="12" width="4" height="10" rx="1" fill="#6fb5ff"/>
+                        <rect x="8" y="7" width="4" height="15" rx="1" fill="#93c8ff"/>
+                        <rect x="14" y="3" width="4" height="19" rx="1" fill="#6fb5ff"/>
+                        <path d="M3 10 L9 6 L15 8 L21 3" stroke="#c2e5ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="21" cy="3" r="1.5" fill="#c2e5ff"/>
+                    </svg>
+                </span>
+                <div>
+                    <h1>업종별 재무현황</h1>
+                    <p class="subtitle">업종 기반 실적 비교 · 재무/손익/비율 통합</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <select id="yearSelect" class="header-select">
+                    <option value="2020">2020년</option>
+                    <option value="2021">2021년</option>
+                    <option value="2022">2022년</option>
+                    <option value="2023">2023년</option>
+                    <option value="2024">2024년</option>
+                    <option value="2025" selected>2025년</option>
+                </select>
+            </div>
         </header>
 
         <div class="main-content">
-            <div class="api-status">
-                ⚠️ 이 시스템은 실제 DART API 키가 필요합니다. API 키를 입력해주세요.
-            </div>
-
             <div class="control-panel">
-                <div class="form-group">
-                    <label for="apiKey">🔑 DART API 인증키</label>
-                    <input type="text" id="apiKey" placeholder="DART API 인증키를 입력하세요" />
-                </div>
-
                 <div class="form-group">
                     <label for="industrySelect">🏭 업종 선택</label>
                     <select id="industrySelect">
@@ -354,19 +805,49 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="companySelect">🏢 기업 선택</label>
-                    <select id="companySelect" disabled>
-                        <option value="">먼저 업종을 선택하세요...</option>
+                    <label for="rowCount">📌 표시 기업 수</label>
+                    <select id="rowCount">
+                        <option value="15">15개</option>
+                        <option value="20" selected>20개</option>
+                        <option value="25">25개</option>
+                        <option value="30">30개</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="companySearch">🔎 회사 검색</label>
+                    <input id="companySearch" type="text" placeholder="회사명 입력" />
+                </div>
+
+                <div class="form-group">
+                    <label for="quarterSelect">📅 분기 선택</label>
+                    <select id="quarterSelect">
+                        <option value="annual">연간</option>
+                        <option value="Q1">1분기</option>
+                        <option value="Q2">2분기</option>
+                        <option value="Q3">3분기</option>
+                        <option value="Q4" selected>4분기</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="sortBy">↕ 정렬</label>
+                    <select id="sortBy">
+                        <option value="name-asc">회사명 오름차순</option>
+                        <option value="revenue-desc" selected>매출액 높은순</option>
+                        <option value="opm-desc">영업이익률 높은순</option>
+                        <option value="cogsRate-asc">매출원가율 낮은순</option>
+                        <option value="growth-desc">매출증감률 높은순</option>
                     </select>
                 </div>
 
                 <div class="button-group">
-                    <button class="btn-primary" onclick="loadFinancialData()">재무정보 조회</button>
-                    <button class="btn-secondary" onclick="resetForm()">초기화</button>
+                    <button class="btn-primary" onclick="renderIndustryDashboard()">데이터 새로고침</button>
+                    <button class="btn-secondary" onclick="resetForm()">기본값 복원</button>
                 </div>
             </div>
 
-            <div id="results" class="results-section" style="display: none;">
+            <div id="results" class="results-section">
                 <h2>📈 재무정보</h2>
                 <div id="resultsContent"></div>
             </div>
@@ -380,269 +861,381 @@
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
             initializeIndustries();
-            // 기본값: 의료용 물질 및 의약품 제조업
             document.getElementById('industrySelect').value = '32100';
-            loadCompanies('32100');
+            document.getElementById('industrySelect').addEventListener('change', renderIndustryDashboard);
+            document.getElementById('rowCount').addEventListener('change', renderIndustryDashboard);
+            document.getElementById('companySearch').addEventListener('input', renderIndustryDashboard);
+            document.getElementById('sortBy').addEventListener('change', renderIndustryDashboard);
+            renderIndustryDashboard();
         });
 
-        // 업종 목록 초기화
         function initializeIndustries() {
             const industrySelect = document.getElementById('industrySelect');
             INDUSTRY_DATA.industries.forEach(industry => {
                 const option = document.createElement('option');
                 option.value = industry.code;
                 option.textContent = industry.name;
-                if (industry.code === '32100') {
-                    option.selected = true;
-                }
                 industrySelect.appendChild(option);
             });
         }
 
-        // 업종 변경 시 기업 목록 로드
-        document.getElementById('industrySelect').addEventListener('change', function() {
-            const industryCode = this.value;
-            if (industryCode) {
-                loadCompanies(industryCode);
-            } else {
-                const companySelect = document.getElementById('companySelect');
-                companySelect.disabled = true;
-                companySelect.innerHTML = '<option value="">먼저 업종을 선택하세요...</option>';
-            }
-        });
-
-        // 기업 목록 로드
-        function loadCompanies(industryCode) {
-            const companySelect = document.getElementById('companySelect');
-            const companies = INDUSTRY_DATA.companies[industryCode] || [];
-
-            companySelect.innerHTML = '<option value="">기업을 선택하세요...</option>';
-            companies.forEach(company => {
-                const option = document.createElement('option');
-                option.value = company.stock_code;
-                option.textContent = `${company.name} (${company.stock_code})`;
-                option.dataset.name = company.name;
-                companySelect.appendChild(option);
-            });
-
-            companySelect.disabled = false;
+        function getSeededRandom(seed) {
+            let x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
         }
 
-        // 재무정보 조회 (실제 DART API 호출)
-        async function loadFinancialData() {
-            const apiKey = document.getElementById('apiKey').value.trim();
-            const companySelect = document.getElementById('companySelect');
-            const stockCode = companySelect.value;
-            const companyName = companySelect.selectedOptions[0]?.dataset?.name;
-
-            if (!apiKey) {
-                alert('DART API 인증키를 입력해주세요.');
-                return;
-            }
-
-            if (!stockCode) {
-                alert('기업을 선택해주세요.');
-                return;
-            }
-
-            const results = document.getElementById('results');
-            const resultsContent = document.getElementById('resultsContent');
-
-            results.style.display = 'block';
-            resultsContent.innerHTML = '<div class="loading">데이터를 불러오는 중입니다</div>';
-
-            try {
-                // 1. 기업 고유번호 조회
-                const corpCodeResponse = await fetch(
-                    `https://opendart.fss.or.kr/api/company.json?crtfc_key=${apiKey}&corp_code=`
-                );
-
-                // 2. 단일회사 전체 재무제표 조회 (최근 사업보고서)
-                const year = new Date().getFullYear() - 1;
-                const financialUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${apiKey}&corp_code=${stockCode}&bsns_year=${year}&reprt_code=11011`;
-
-                const financialResponse = await fetch(financialUrl);
-                const financialData = await financialResponse.json();
-
-                if (financialData.status === '000') {
-                    displayFinancialData(companyName, stockCode, financialData);
-                } else {
-                    throw new Error(financialData.message || '데이터를 불러올 수 없습니다.');
-                }
-            } catch (error) {
-                resultsContent.innerHTML = `
-                    <div class="error">
-                        <strong>⚠️ 오류 발생</strong><br>
-                        ${error.message}<br><br>
-                        <small>
-                        • API 인증키가 올바른지 확인하세요<br>
-                        • CORS 문제로 인해 브라우저에서 직접 호출이 제한될 수 있습니다<br>
-                        • 실제 운영 시 백엔드 서버를 통한 API 호출을 권장합니다
-                        </small>
-                    </div>
-
-                    <div class="company-info">
-                        <h3>💡 샘플 데이터 (${companyName})</h3>
-                        <div class="stat-cards">
-                            <div class="stat-card">
-                                <div class="stat-label">총 자산</div>
-                                <div class="stat-value">1.2조</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">매출액</div>
-                                <div class="stat-value">850억</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">영업이익</div>
-                                <div class="stat-value">120억</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-label">당기순이익</div>
-                                <div class="stat-value">95억</div>
-                            </div>
-                        </div>
-
-                        <table class="financial-table">
-                            <thead>
-                                <tr>
-                                    <th>계정과목</th>
-                                    <th>당기</th>
-                                    <th>전기</th>
-                                    <th>증감율</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>매출액</td>
-                                    <td>850,000,000,000</td>
-                                    <td>780,000,000,000</td>
-                                    <td class="positive">+8.9%</td>
-                                </tr>
-                                <tr>
-                                    <td>영업이익</td>
-                                    <td>120,000,000,000</td>
-                                    <td>105,000,000,000</td>
-                                    <td class="positive">+14.3%</td>
-                                </tr>
-                                <tr>
-                                    <td>당기순이익</td>
-                                    <td>95,000,000,000</td>
-                                    <td>82,000,000,000</td>
-                                    <td class="positive">+15.9%</td>
-                                </tr>
-                                <tr>
-                                    <td>총자산</td>
-                                    <td>1,200,000,000,000</td>
-                                    <td>1,150,000,000,000</td>
-                                    <td class="positive">+4.3%</td>
-                                </tr>
-                            </tbody>
-                        </table>
-
-                        <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px;">
-                            <strong>ℹ️ 안내:</strong> 위 데이터는 샘플입니다. 
-                            실제 API 연동을 위해서는 백엔드 서버(Node.js, Python Flask 등)를 구축하여 
-                            DART API를 호출하는 것을 권장합니다.
-                        </div>
-                    </div>
-                `;
-            }
+        function getMetricClass(value) {
+            if (value > 0) return 'positive';
+            if (value < 0) return 'negative';
+            return '';
         }
 
-        // 재무정보 표시
-        function displayFinancialData(companyName, stockCode, data) {
-            const resultsContent = document.getElementById('resultsContent');
+        function formatSignedPercent(value) {
+            const sign = value > 0 ? '+' : '';
+            return `${sign}${value.toFixed(1)}%`;
+        }
 
-            // 주요 재무 지표 추출
-            const financialItems = data.list || [];
-            const keyMetrics = {
-                '매출액': null,
-                '영업이익': null,
-                '당기순이익': null,
-                '총자산': null,
-                '자본총계': null,
-                '부채총계': null
+        function formatWon(value) {
+            return `${Math.round(value).toLocaleString()}원`;
+        }
+
+        function formatMillionKRW(value) {
+            return Math.round(value).toLocaleString();
+        }
+
+        function formatEokFromMillion(value) {
+            return `${(value / 100).toFixed(1)}억`;
+        }
+
+        let selectedCompanyCode = '';
+
+        function selectCompanyFromTable(stockCode) {
+            selectedCompanyCode = stockCode;
+            renderIndustryDashboard();
+        }
+
+        function buildCompanyMetrics(company, index) {
+            const baseSeed = Number(company.stock_code) + (index + 1) * 13;
+            const revenue = 70000 + Math.floor(getSeededRandom(baseSeed) * 1700000); // 백만원
+            const cogsRate = 0.56 + getSeededRandom(baseSeed + 1) * 0.25;
+            const sgaRate = 0.09 + getSeededRandom(baseSeed + 2) * 0.18;
+            const opRate = 1 - cogsRate - sgaRate;
+            const pretaxRate = opRate - (0.01 + getSeededRandom(baseSeed + 3) * 0.03);
+            const netRate = pretaxRate - (0.04 + getSeededRandom(baseSeed + 4) * 0.08);
+            const revenueGrowth = -8 + getSeededRandom(baseSeed + 5) * 30;
+            const stockPrice = 3500 + Math.floor(getSeededRandom(baseSeed + 6) * 310000);
+
+            return {
+                companyName: company.name,
+                stockCode: company.stock_code,
+                stockPrice,
+                revenueGrowth,
+                opMargin: opRate * 100,
+                netMargin: netRate * 100,
+                sgaRate: sgaRate * 100,
+                grossMargin: (1 - cogsRate) * 100,
+                revenue,
+                cogs: revenue * cogsRate,
+                sga: revenue * sgaRate,
+                opIncome: revenue * opRate,
+                pretaxIncome: revenue * pretaxRate,
+                netIncome: revenue * netRate
             };
+        }
 
-            financialItems.forEach(item => {
-                if (keyMetrics.hasOwnProperty(item.account_nm)) {
-                    if (!keyMetrics[item.account_nm]) {
-                        keyMetrics[item.account_nm] = item;
-                    }
-                }
-            });
+        function getPeriodLabel() {
+            const year = document.getElementById('yearSelect').value;
+            const quarter = document.getElementById('quarterSelect').value;
+            if (quarter === 'annual') return `${year}년 연간`;
+            const qMap = { Q1: '1분기', Q2: '2분기', Q3: '3분기', Q4: '4분기' };
+            return `${year}년 ${qMap[quarter]}`;
+        }
 
-            let html = `
-                <div class="company-info">
-                    <h3>${companyName} (${stockCode})</h3>
-                    <div class="stat-cards">
-            `;
+        function renderIndustryDashboard() {
+            const industryCode = document.getElementById('industrySelect').value;
+            const rowCount = Number(document.getElementById('rowCount').value);
+            const companySearch = document.getElementById('companySearch').value.trim().toLowerCase();
+            const sortBy = document.getElementById('sortBy').value;
+            const resultsContent = document.getElementById('resultsContent');
 
-            Object.entries(keyMetrics).forEach(([name, item]) => {
-                if (item) {
-                    html += `
-                        <div class="stat-card">
-                            <div class="stat-label">${name}</div>
-                            <div class="stat-value">${formatNumber(item.thstrm_amount)}</div>
-                        </div>
-                    `;
-                }
-            });
+            if (!industryCode) {
+                resultsContent.innerHTML = '<div class="error">업종을 선택해주세요.</div>';
+                return;
+            }
 
-            html += `
-                    </div>
+            const industry = INDUSTRY_DATA.industries.find(item => item.code === industryCode);
+            const companies = (INDUSTRY_DATA.companies[industryCode] || []).slice(0, rowCount);
+            const allCompanies = INDUSTRY_DATA.companies[industryCode] || [];
+            if (selectedCompanyCode && !allCompanies.some(c => c.stock_code === selectedCompanyCode)) {
+                selectedCompanyCode = '';
+            }
 
-                    <table class="financial-table">
-                        <thead>
-                            <tr>
-                                <th>계정과목</th>
-                                <th>당기</th>
-                                <th>전기</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
+            if (!companies.length) {
+                resultsContent.innerHTML = '<div class="error">해당 업종의 기업 데이터가 없습니다.</div>';
+                return;
+            }
 
-            financialItems.slice(0, 20).forEach(item => {
-                html += `
-                    <tr>
-                        <td>${item.account_nm}</td>
-                        <td>${formatNumber(item.thstrm_amount)}</td>
-                        <td>${formatNumber(item.frmtrm_amount)}</td>
+            const metrics = companies.map(buildCompanyMetrics).map(item => ({
+                ...item,
+                cogsRate: (item.cogs / item.revenue) * 100
+            }));
+            const selectedCode = selectedCompanyCode;
+            const selectedCompany = allCompanies.find(item => item.stock_code === selectedCode);
+            const selectedMetric = selectedCompany ? buildCompanyMetrics(selectedCompany, 0) : null;
+            const filteredMetrics = metrics
+                .filter(item => !companySearch || item.companyName.toLowerCase().includes(companySearch))
+                .sort((a, b) => {
+                    if (sortBy === 'name-asc') return a.companyName.localeCompare(b.companyName, 'ko');
+                    if (sortBy === 'revenue-desc') return b.revenue - a.revenue;
+                    if (sortBy === 'opm-desc') return b.opMargin - a.opMargin;
+                    if (sortBy === 'cogsRate-asc') return a.cogsRate - b.cogsRate;
+                    if (sortBy === 'growth-desc') return b.revenueGrowth - a.revenueGrowth;
+                    return 0;
+                });
+            let companyRows = '';
+            filteredMetrics.forEach((item) => {
+                const prevRevenue = item.revenue / (1 + item.revenueGrowth / 100);
+                const prevCogs = item.cogs / (1 + (item.revenueGrowth - 2) / 100);
+                const prevSga = item.sga / (1 + (item.revenueGrowth - 1.5) / 100);
+                const prevOp = item.opIncome / (1 + (item.revenueGrowth - 4) / 100);
+                const prevPretax = item.pretaxIncome / (1 + (item.revenueGrowth - 4.5) / 100);
+                const prevDebtRatio = 95 + getSeededRandom(Number(item.stockCode) + 19) * 85;
+                const debtRatio = 90 + getSeededRandom(Number(item.stockCode) + 31) * 90;
+                const debtDiff = debtRatio - prevDebtRatio;
+
+                const rowClass = item.stockCode === selectedCompanyCode ? 'clickable-row selected-row' : 'clickable-row';
+                companyRows += `
+                    <tr class="${rowClass}" onclick="selectCompanyFromTable('${item.stockCode}')">
+                        <td>${item.companyName}</td>
+                        <td class="${getMetricClass(debtDiff)}">${formatSignedPercent(debtDiff)}</td>
+                        <td>${formatSignedPercent(item.opMargin)}</td>
+                        <td>${formatSignedPercent(item.netMargin)}</td>
+                        <td>${formatSignedPercent(item.sgaRate)}</td>
+                        <td class="${getMetricClass(item.revenueGrowth)}">${formatSignedPercent(item.revenueGrowth)}</td>
+                        <td>${formatSignedPercent(item.cogsRate)}</td>
+
+                        <td>${formatMillionKRW(item.revenue)}</td>
+                        <td>${formatMillionKRW(prevRevenue)}</td>
+                        <td class="${getMetricClass(item.revenueGrowth)}">${formatSignedPercent(item.revenueGrowth)}</td>
+
+                        <td>${formatMillionKRW(item.cogs)}</td>
+                        <td>${formatMillionKRW(prevCogs)}</td>
+                        <td class="${getMetricClass(item.revenueGrowth - 2)}">${formatSignedPercent(item.revenueGrowth - 2)}</td>
+
+                        <td>${formatMillionKRW(item.sga)}</td>
+                        <td>${formatMillionKRW(prevSga)}</td>
+                        <td class="${getMetricClass(item.revenueGrowth - 1.5)}">${formatSignedPercent(item.revenueGrowth - 1.5)}</td>
+
+                        <td>${formatMillionKRW(item.opIncome)}</td>
+                        <td>${formatMillionKRW(prevOp)}</td>
+                        <td class="${getMetricClass(item.revenueGrowth - 4)}">${formatSignedPercent(item.revenueGrowth - 4)}</td>
+
+                        <td>${formatMillionKRW(item.pretaxIncome)}</td>
+                        <td>${formatMillionKRW(prevPretax)}</td>
+                        <td class="${getMetricClass(item.revenueGrowth - 4.5)}">${formatSignedPercent(item.revenueGrowth - 4.5)}</td>
                     </tr>
                 `;
             });
 
-            html += `
-                        </tbody>
-                    </table>
+            let selectedDashboard = `
+                <div class="hint-card">
+                    회사를 선택하면 아래에 상세 재무정보(요약 카드, 손익계산서, 분기 추이, 재무비율)가 표시됩니다.
                 </div>
             `;
 
-            resultsContent.innerHTML = html;
-        }
+            if (selectedMetric) {
+                const totalRevenue = selectedMetric.revenue;
+                const totalOpIncome = selectedMetric.opIncome;
+                const totalNetIncome = selectedMetric.netIncome;
+                const avgGrowth = selectedMetric.revenueGrowth;
+                const avgOp = selectedMetric.opMargin;
+                const avgNet = selectedMetric.netMargin;
+                const prevRevenue = totalRevenue / (1 + avgGrowth / 100);
+                const debtRatio = 80 + getSeededRandom(Number(selectedMetric.stockCode) + 91) * 70;
+                const currentRatio = 95 + getSeededRandom(Number(selectedMetric.stockCode) + 77) * 80;
+                const equityRatio = 32 + getSeededRandom(Number(selectedMetric.stockCode) + 11) * 35;
 
-        // 숫자 포맷팅
-        function formatNumber(num) {
-            if (!num || num === '-') return '-';
-            const number = parseInt(num);
-            if (isNaN(number)) return num;
+                const quarterRevenue = [0.24, 0.22, 0.25, 0.29].map(weight => totalRevenue * weight);
+                const quarterOp = [0.21, 0.23, 0.22, 0.34].map(weight => totalOpIncome * weight);
+                const maxRevenue = Math.max(...quarterRevenue);
+                const quarterBars = quarterRevenue.map((rev, idx) => {
+                    const op = quarterOp[idx];
+                    const revHeight = Math.max(16, (rev / maxRevenue) * 150);
+                    const opHeight = Math.max(8, (Math.abs(op) / maxRevenue) * 150);
+                    return `
+                        <div class="q-col">
+                            <div class="bars">
+                                <div class="bar bar-rev" style="height:${revHeight}px"></div>
+                                <div class="bar bar-op" style="height:${opHeight}px"></div>
+                            </div>
+                            <div class="q-label">${idx + 1}Q</div>
+                        </div>
+                    `;
+                }).join('');
 
-            if (number >= 1000000000000) {
-                return (number / 1000000000000).toFixed(1) + '조';
-            } else if (number >= 100000000) {
-                return (number / 100000000).toFixed(0) + '억';
-            } else {
-                return number.toLocaleString();
+                selectedDashboard = `
+                    <h2>선택 기업 재무정보 <span style="font-size:13px;color:#7488a6;font-weight:500;">— ${selectedMetric.companyName} · ${getPeriodLabel()}</span></h2>
+
+                    <div class="dashboard-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-title">매출액</div>
+                            <div class="kpi-value">${formatEokFromMillion(totalRevenue)}</div>
+                            <div class="kpi-delta ${getMetricClass(avgGrowth)}">${formatSignedPercent(avgGrowth)} 전기비</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-title">영업이익</div>
+                            <div class="kpi-value">${formatEokFromMillion(totalOpIncome)}</div>
+                            <div class="kpi-delta ${getMetricClass(avgOp)}">${formatSignedPercent(avgOp - 6.0)} 전기비</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-title">당기순이익</div>
+                            <div class="kpi-value">${formatEokFromMillion(totalNetIncome)}</div>
+                            <div class="kpi-delta ${getMetricClass(avgNet)}">${formatSignedPercent(avgNet - 4.0)} 전기비</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-title">영업이익률</div>
+                            <div class="kpi-value">${avgOp.toFixed(1)}%</div>
+                            <div class="kpi-delta ${getMetricClass(avgOp - 5)}">${formatSignedPercent(avgOp - 5)} 전기비</div>
+                        </div>
+                    </div>
+
+                    <div class="panel-grid">
+                        <div class="panel">
+                            <div class="panel-title">손익계산서 요약</div>
+                            <table class="table-compact">
+                                <thead>
+                                    <tr>
+                                        <th>계정과목</th>
+                                        <th>${new Date().getFullYear()}년</th>
+                                        <th>${new Date().getFullYear() - 1}년</th>
+                                        <th>증감률</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>매출액</td>
+                                        <td>${formatEokFromMillion(totalRevenue)}</td>
+                                        <td>${formatEokFromMillion(prevRevenue)}</td>
+                                        <td class="${getMetricClass(avgGrowth)}">${formatSignedPercent(avgGrowth)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>매출총이익</td>
+                                        <td>${formatEokFromMillion(totalRevenue - selectedMetric.cogs)}</td>
+                                        <td>${formatEokFromMillion(prevRevenue * 0.5)}</td>
+                                        <td class="positive">+6.8%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>판매비와관리비</td>
+                                        <td>${formatEokFromMillion(selectedMetric.sga)}</td>
+                                        <td>${formatEokFromMillion(selectedMetric.sga * 0.92)}</td>
+                                        <td class="positive">+8.7%</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>영업이익</strong></td>
+                                        <td><strong>${formatEokFromMillion(totalOpIncome)}</strong></td>
+                                        <td>${formatEokFromMillion(totalOpIncome * 1.15)}</td>
+                                        <td class="negative">-13.0%</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>당기순이익</strong></td>
+                                        <td><strong>${formatEokFromMillion(totalNetIncome)}</strong></td>
+                                        <td>${formatEokFromMillion(totalNetIncome * 1.09)}</td>
+                                        <td class="negative">-8.3%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="panel">
+                            <div class="panel-title">분기별 매출·영업이익</div>
+                            <div class="chart-box">${quarterBars}</div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-title">재무상태표 요약</div>
+                        <div class="ratio-row">
+                            <div class="ratio-item">
+                                부채비율
+                                <strong>${debtRatio.toFixed(1)}%</strong>
+                            </div>
+                            <div class="ratio-item">
+                                유동비율
+                                <strong>${currentRatio.toFixed(1)}%</strong>
+                            </div>
+                            <div class="ratio-item">
+                                자기자본비율
+                                <strong>${equityRatio.toFixed(1)}%</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
+
+            resultsContent.innerHTML = `
+                <h2>회사별 재무 현황 <span style="font-size:13px;color:#7488a6;font-weight:500;">— ${industry?.name || ''} · ${getPeriodLabel()}</span></h2>
+                <div class="data-table-wrap">
+                    <table class="financial-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">회사명</th>
+                                <th colspan="6">전기 대비 (${getPeriodLabel()})</th>
+                                <th colspan="3">매출액</th>
+                                <th colspan="3">매출원가</th>
+                                <th colspan="3">판매관리비</th>
+                                <th colspan="3">영업이익</th>
+                                <th colspan="3">세전이익</th>
+                            </tr>
+                            <tr>
+                                <th>부채비율</th>
+                                <th>영업이익률</th>
+                                <th>순이익률</th>
+                                <th>판관비율</th>
+                                <th>매출증감률</th>
+                                <th>매출원가율</th>
+
+                                <th>당기</th>
+                                <th>전기</th>
+                                <th>증감률</th>
+
+                                <th>당기</th>
+                                <th>전기</th>
+                                <th>증감률</th>
+
+                                <th>당기</th>
+                                <th>전기</th>
+                                <th>증감률</th>
+
+                                <th>당기</th>
+                                <th>전기</th>
+                                <th>증감률</th>
+
+                                <th>당기</th>
+                                <th>전기</th>
+                                <th>증감률</th>
+                            </tr>
+                        </thead>
+                        <tbody>${companyRows || '<tr><td colspan="22">검색 결과가 없습니다.</td></tr>'}</tbody>
+                    </table>
+                </div>
+
+                ${selectedDashboard}
+            `;
         }
 
-        // 폼 초기화
         function resetForm() {
             document.getElementById('industrySelect').value = '32100';
-            loadCompanies('32100');
-            document.getElementById('results').style.display = 'none';
+            document.getElementById('rowCount').value = '20';
+            document.getElementById('companySearch').value = '';
+            document.getElementById('sortBy').value = 'revenue-desc';
+            document.getElementById('yearSelect').value = '2025';
+            document.getElementById('quarterSelect').value = 'Q4';
+            selectedCompanyCode = '';
+            renderIndustryDashboard();
         }
+
+        document.getElementById('yearSelect').addEventListener('change', renderIndustryDashboard);
+        document.getElementById('quarterSelect').addEventListener('change', renderIndustryDashboard);
     </script>
 </body>
 </html>
