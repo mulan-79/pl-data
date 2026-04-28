@@ -1,0 +1,41 @@
+{
+  "updated_at": "2026-04-28",
+  "latest": "2025_annual",
+  "periods": [
+    {
+      "key": "2025_annual",
+      "year": "2025",
+      "quarter": "annual",
+      "label": "2025년 연간",
+      "prevLabel": "2024년 연간 대비"
+    },
+    {
+      "key": "2025_Q3",
+      "year": "2025",
+      "quarter": "Q3",
+      "label": "2025년 3분기(누적)",
+      "prevLabel": "2024년 3분기 대비"
+    },
+    {
+      "key": "2025_Q2",
+      "year": "2025",
+      "quarter": "Q2",
+      "label": "2025년 상반기",
+      "prevLabel": "2024년 상반기 대비"
+    },
+    {
+      "key": "2025_Q1",
+      "year": "2025",
+      "quarter": "Q1",
+      "label": "2025년 1분기",
+      "prevLabel": "2024년 1분기 대비"
+    },
+    {
+      "key": "2024_annual",
+      "year": "2024",
+      "quarter": "annual",
+      "label": "2024년 연간",
+      "prevLabel": "2023년 연간 대비"
+    }
+  ]
+}

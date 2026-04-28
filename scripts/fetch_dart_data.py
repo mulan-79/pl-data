@@ -97,26 +97,75 @@ def extract_metrics(stock_code, corp_code, rows):
         'netMargin': round(net['current'] / r * 100, 2) if r else 0,
     }
 
+QUARTER_LABELS = {
+    'annual': '연간',
+    'Q1': '1분기',
+    'Q2': '상반기',
+    'Q3': '3분기(누적)',
+}
+
+PREV_QUARTER_LABELS = {
+    'annual': '연간',
+    'Q1': '1분기',
+    'Q2': '상반기',
+    'Q3': '3분기',
+}
+
 def auto_detect_periods():
     """현재 날짜 기준으로 수집할 연도/분기 자동 결정"""
     today = date.today()
     year = today.year
+    prev = year - 1
     periods = []
 
-    # 전년도 annual은 항상 수집 (3월 말 이후 확정)
-    periods.append((str(year - 1), 'annual'))
+    # 전년도 전체 분기 (3월 이후 annual, 나머지는 이미 확정)
+    periods.append((str(prev), 'annual'))
+    periods.append((str(prev), 'Q1'))
+    periods.append((str(prev), 'Q2'))
+    periods.append((str(prev), 'Q3'))
 
     # 당해연도 분기 (공시 일정 기준)
-    if today.month >= 5:   # 5월 이후: Q1 확정
+    if today.month >= 5:
         periods.append((str(year), 'Q1'))
-    if today.month >= 8:   # 8월 이후: Q2(반기) 확정
+    if today.month >= 8:
         periods.append((str(year), 'Q2'))
-    if today.month >= 11:  # 11월 이후: Q3 확정
+    if today.month >= 11:
         periods.append((str(year), 'Q3'))
-    if today.month >= 4 and year > 2020:  # 4월 이후: 전전년도 annual은 이미 있으니 2년치 유지
-        periods.append((str(year - 2), 'annual'))
+    if today.month >= 4:
+        periods.append((str(year), 'annual'))
 
     return periods
+
+
+def build_manifest(data_dir):
+    """수집된 파일 목록으로 manifest.json 생성"""
+    import re
+    periods = []
+    for fname in sorted(os.listdir(data_dir), reverse=True):
+        m = re.match(r'financial_(\d{4})_(annual|Q1|Q2|Q3|Q4)\.json', fname)
+        if not m:
+            continue
+        year, quarter = m.group(1), m.group(2)
+        q_label = QUARTER_LABELS.get(quarter, quarter)
+        pq_label = PREV_QUARTER_LABELS.get(quarter, '전기')
+        periods.append({
+            'key': f'{year}_{quarter}',
+            'year': year,
+            'quarter': quarter,
+            'label': f'{year}년 {q_label}',
+            'prevLabel': f'{int(year)-1}년 {pq_label} 대비',
+        })
+
+    # 최신 기간 = periods[0] (역순 정렬이므로)
+    manifest = {
+        'updated_at': datetime.now().strftime('%Y-%m-%d'),
+        'latest': periods[0]['key'] if periods else None,
+        'periods': periods,
+    }
+    manifest_path = os.path.join(data_dir, 'manifest.json')
+    with open(manifest_path, 'w', encoding='utf-8') as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+    print(f'manifest.json 업데이트: {len(periods)}개 기간')
 
 def main():
     if not DART_API_KEY:
@@ -203,6 +252,8 @@ def main():
 
         print(f'  저장 완료: {output_path}')
 
+    # manifest.json 항상 갱신
+    build_manifest(os.path.join(base_dir, 'data'))
     print('\n완료!')
 
 if __name__ == '__main__':
