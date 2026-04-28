@@ -2,14 +2,28 @@
 """새 디자인 HTML 생성 스크립트"""
 import re, os
 
-src = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'dart_financial_website.html')
+base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+src = os.path.join(base, 'dart_financial_website.html')
+backup = os.path.join(base, 'scripts', '_industry_data.js')
+
 with open(src, encoding='utf-8') as f:
     old = f.read()
 
-# Extract INDUSTRY_DATA
-idx_start = old.find('        const INDUSTRY_DATA =')
-idx_end = old.find(';\n', idx_start) + 2
-industry_line = old[idx_start:idx_end].strip()
+# Extract INDUSTRY_DATA (if present in current file, save backup)
+idx_start = old.find('const INDUSTRY_DATA =')
+if idx_start != -1:
+    idx_end = old.find(';\n', idx_start) + 2
+    industry_line = old[idx_start:idx_end].strip()
+    # Save backup for future runs
+    with open(backup, 'w', encoding='utf-8') as f:
+        f.write(industry_line)
+    print(f'INDUSTRY_DATA 추출 완료 ({len(industry_line)//1024}KB)')
+elif os.path.exists(backup):
+    with open(backup, encoding='utf-8') as f:
+        industry_line = f.read().strip()
+    print(f'INDUSTRY_DATA 백업에서 로드 ({len(industry_line)//1024}KB)')
+else:
+    raise RuntimeError('INDUSTRY_DATA를 찾을 수 없습니다. dart_financial_website.html에 데이터가 있어야 합니다.')
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="ko">
@@ -154,7 +168,7 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
     <div style="flex:0 0 280px;">
       <label class="filter-label">업종 선택</label>
       <div class="ctrl-wrap">
-        <select id="industrySelect" class="ctrl-select"><option value="">업종을 선택하세요...</option></select>
+        <select id="industrySelect" class="ctrl-select"><option value="">업종을 선택하세요...</option><option value="all">🔍 전체 업종 검색</option></select>
         <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
       </div>
     </div>
@@ -332,10 +346,19 @@ async function renderIndustryDashboard(){
     updateStatCards([],null); return;
   }
 
-  const ind=INDUSTRY_DATA.industries.find(i=>i.code===ic);
-  const allCo=INDUSTRY_DATA.companies[ic]||[];
-  if(!allCo.length){
-    document.getElementById('tableBody').innerHTML='<tr><td colspan="18" style="text-align:center;padding:60px;color:#94a3b8;">해당 업종의 기업 데이터가 없습니다.</td></tr>'; return;
+  // 전체 업종 모드: 모든 기업 합산 (중복 제거)
+  let ind=null, allCo=[];
+  if(ic==='all'){
+    const seen=new Set();
+    Object.values(INDUSTRY_DATA.companies).forEach(companies=>{
+      companies.forEach(c=>{ if(!seen.has(c.stock_code)){seen.add(c.stock_code);allCo.push(c);} });
+    });
+  } else {
+    ind=INDUSTRY_DATA.industries.find(i=>i.code===ic);
+    allCo=INDUSTRY_DATA.companies[ic]||[];
+    if(!allCo.length){
+      document.getElementById('tableBody').innerHTML='<tr><td colspan="18" style="text-align:center;padding:60px;color:#94a3b8;">해당 업종의 기업 데이터가 없습니다.</td></tr>'; return;
+    }
   }
 
   if(selectedCompanyCode&&!allCo.some(c=>c.stock_code===selectedCompanyCode)) selectedCompanyCode='';
@@ -366,9 +389,10 @@ async function renderIndustryDashboard(){
   metrics=metrics.slice(0,rc);
   currentMetrics=metrics;
 
-  document.getElementById('sectionSub').textContent='— '+(ind?ind.name:'')+' · '+getPeriodLabel()+' (단위: 백만원)';
-  document.getElementById('footerText').textContent='총 '+metrics.length+'개 기업 표시 중 · 단위: 백만원';
-  updateStatCards(metrics,ind);
+  const indLabel = ic==='all' ? '전체 업종' : (ind?ind.name:'');
+  document.getElementById('sectionSub').textContent='— '+indLabel+' · '+getPeriodLabel()+' (단위: 백만원)';
+  document.getElementById('footerText').textContent='총 '+metrics.length+'개 기업 표시 중'+(ic==='all'?' (전체 업종)':'')+' · 단위: 백만원';
+  updateStatCards(metrics, ic==='all' ? {name:'전체 업종'} : ind);
   renderResults(metrics);
 }
 
