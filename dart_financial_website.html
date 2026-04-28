@@ -879,7 +879,6 @@
             });
         }
 
-        const WORKER_URL = 'https://pl-data-api.rainym002.workers.dev';
         const apiCache = new Map();
 
         function getMetricClass(value) {
@@ -967,26 +966,21 @@
             resultsContent.innerHTML = `
                 <div style="text-align:center;padding:60px 20px;color:#5967ff;">
                     <div style="font-size:28px;margin-bottom:12px;">⏳</div>
-                    <div style="font-size:15px;font-weight:600;">DART 데이터 불러오는 중...</div>
+                    <div style="font-size:15px;font-weight:600;">데이터 불러오는 중...</div>
                     <div style="font-size:12px;color:#9aacce;margin-top:6px;">${industry?.name || ''} · ${getPeriodLabel()}</div>
                 </div>`;
 
             try {
-                const stockCodes = companies.map(c => c.stock_code).join(',');
-                const res = await fetch(
-                    `${WORKER_URL}/api/financial?stock_codes=${encodeURIComponent(stockCodes)}&year=${year}&quarter=${quarter}`
-                );
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const res = await fetch(`/data/financial_${year}_${quarter}.json`);
+                if (!res.ok) throw new Error(`${year}년 ${quarter} 데이터가 아직 없습니다. (매주 월요일 자동 업데이트)`);
                 const data = await res.json();
-
-                if (data.status !== 'success') throw new Error(data.message || 'API 오류');
 
                 // 회사명 병합
                 const nameMap = Object.fromEntries(allCompanies.map(c => [c.stock_code, c.name]));
-                const metrics = data.list.map(item => ({
-                    ...item,
-                    companyName: nameMap[item.stockCode] || item.stockCode,
-                }));
+                const metrics = companies.map(c => {
+                    const item = data.companies[c.stock_code] || { stockCode: c.stock_code };
+                    return { ...item, companyName: c.name };
+                });
 
                 apiCache.set(cacheKey, metrics);
                 currentMetrics = metrics;
@@ -995,9 +989,8 @@
             } catch (e) {
                 resultsContent.innerHTML = `
                     <div class="error">
-                        <strong>데이터 조회 실패</strong><br>
-                        ${e.message}<br>
-                        <small style="color:#999;margin-top:6px;display:block;">잠시 후 다시 시도해 주세요.</small>
+                        <strong>데이터 없음</strong><br>
+                        ${e.message}
                     </div>`;
             }
         }
