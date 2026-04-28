@@ -822,11 +822,11 @@
                 <div class="form-group">
                     <label for="quarterSelect">📅 분기 선택</label>
                     <select id="quarterSelect">
-                        <option value="annual">연간</option>
+                        <option value="annual" selected>연간</option>
                         <option value="Q1">1분기</option>
                         <option value="Q2">2분기</option>
                         <option value="Q3">3분기</option>
-                        <option value="Q4" selected>4분기</option>
+                        <option value="Q4">4분기</option>
                     </select>
                 </div>
 
@@ -1192,7 +1192,7 @@
             document.getElementById('companySearch').value = '';
             document.getElementById('sortBy').value = 'revenue-desc';
             document.getElementById('yearSelect').value = '2025';
-            document.getElementById('quarterSelect').value = 'Q4';
+            document.getElementById('quarterSelect').value = 'annual';
             selectedCompanyCode = '';
             currentMetrics = [];
             apiCache.clear();
