@@ -879,10 +879,8 @@
             });
         }
 
-        function getSeededRandom(seed) {
-            let x = Math.sin(seed) * 10000;
-            return x - Math.floor(x);
-        }
+        const WORKER_URL = 'https://pl-data-api.rainym002.workers.dev';
+        const apiCache = new Map();
 
         function getMetricClass(value) {
             if (value > 0) return 'positive';
@@ -891,56 +889,37 @@
         }
 
         function formatSignedPercent(value) {
+            if (value === null || value === undefined || isNaN(value)) return '-';
             const sign = value > 0 ? '+' : '';
             return `${sign}${value.toFixed(1)}%`;
         }
 
-        function formatWon(value) {
-            return `${Math.round(value).toLocaleString()}원`;
+        function formatMillion(value) {
+            if (!value) return '-';
+            // value는 원 단위, 백만원으로 표시
+            const m = Math.round(value / 1000000);
+            return m.toLocaleString();
         }
 
-        function formatMillionKRW(value) {
-            return Math.round(value).toLocaleString();
+        function formatEok(value) {
+            if (!value) return '-';
+            // value는 원 단위, 억원으로 표시
+            const e = value / 100000000;
+            if (Math.abs(e) >= 1000) return `${(e / 1000).toFixed(1)}조`;
+            return `${e.toFixed(1)}억`;
         }
 
-        function formatEokFromMillion(value) {
-            return `${(value / 100).toFixed(1)}억`;
+        function growthRate(current, prev) {
+            if (!prev || !current) return null;
+            return ((current - prev) / Math.abs(prev)) * 100;
         }
 
         let selectedCompanyCode = '';
+        let currentMetrics = [];
 
         function selectCompanyFromTable(stockCode) {
-            selectedCompanyCode = stockCode;
-            renderIndustryDashboard();
-        }
-
-        function buildCompanyMetrics(company, index) {
-            const baseSeed = Number(company.stock_code) + (index + 1) * 13;
-            const revenue = 70000 + Math.floor(getSeededRandom(baseSeed) * 1700000); // 백만원
-            const cogsRate = 0.56 + getSeededRandom(baseSeed + 1) * 0.25;
-            const sgaRate = 0.09 + getSeededRandom(baseSeed + 2) * 0.18;
-            const opRate = 1 - cogsRate - sgaRate;
-            const pretaxRate = opRate - (0.01 + getSeededRandom(baseSeed + 3) * 0.03);
-            const netRate = pretaxRate - (0.04 + getSeededRandom(baseSeed + 4) * 0.08);
-            const revenueGrowth = -8 + getSeededRandom(baseSeed + 5) * 30;
-            const stockPrice = 3500 + Math.floor(getSeededRandom(baseSeed + 6) * 310000);
-
-            return {
-                companyName: company.name,
-                stockCode: company.stock_code,
-                stockPrice,
-                revenueGrowth,
-                opMargin: opRate * 100,
-                netMargin: netRate * 100,
-                sgaRate: sgaRate * 100,
-                grossMargin: (1 - cogsRate) * 100,
-                revenue,
-                cogs: revenue * cogsRate,
-                sga: revenue * sgaRate,
-                opIncome: revenue * opRate,
-                pretaxIncome: revenue * pretaxRate,
-                netIncome: revenue * netRate
-            };
+            selectedCompanyCode = (selectedCompanyCode === stockCode) ? '' : stockCode;
+            renderResults(currentMetrics);
         }
 
         function getPeriodLabel() {
@@ -951,11 +930,11 @@
             return `${year}년 ${qMap[quarter]}`;
         }
 
-        function renderIndustryDashboard() {
+        async function renderIndustryDashboard() {
             const industryCode = document.getElementById('industrySelect').value;
             const rowCount = Number(document.getElementById('rowCount').value);
-            const companySearch = document.getElementById('companySearch').value.trim().toLowerCase();
-            const sortBy = document.getElementById('sortBy').value;
+            const year = document.getElementById('yearSelect').value;
+            const quarter = document.getElementById('quarterSelect').value;
             const resultsContent = document.getElementById('resultsContent');
 
             if (!industryCode) {
@@ -964,216 +943,223 @@
             }
 
             const industry = INDUSTRY_DATA.industries.find(item => item.code === industryCode);
-            const companies = (INDUSTRY_DATA.companies[industryCode] || []).slice(0, rowCount);
             const allCompanies = INDUSTRY_DATA.companies[industryCode] || [];
-            if (selectedCompanyCode && !allCompanies.some(c => c.stock_code === selectedCompanyCode)) {
-                selectedCompanyCode = '';
-            }
 
-            if (!companies.length) {
+            if (!allCompanies.length) {
                 resultsContent.innerHTML = '<div class="error">해당 업종의 기업 데이터가 없습니다.</div>';
                 return;
             }
 
-            const metrics = companies.map(buildCompanyMetrics).map(item => ({
-                ...item,
-                cogsRate: (item.cogs / item.revenue) * 100
-            }));
-            const selectedCode = selectedCompanyCode;
-            const selectedCompany = allCompanies.find(item => item.stock_code === selectedCode);
-            const selectedMetric = selectedCompany ? buildCompanyMetrics(selectedCompany, 0) : null;
+            if (selectedCompanyCode && !allCompanies.some(c => c.stock_code === selectedCompanyCode)) {
+                selectedCompanyCode = '';
+            }
+
+            const companies = allCompanies.slice(0, rowCount);
+            const cacheKey = `${industryCode}-${year}-${quarter}-${rowCount}`;
+
+            if (apiCache.has(cacheKey)) {
+                currentMetrics = apiCache.get(cacheKey);
+                renderResults(currentMetrics);
+                return;
+            }
+
+            // 로딩 표시
+            resultsContent.innerHTML = `
+                <div style="text-align:center;padding:60px 20px;color:#5967ff;">
+                    <div style="font-size:28px;margin-bottom:12px;">⏳</div>
+                    <div style="font-size:15px;font-weight:600;">DART 데이터 불러오는 중...</div>
+                    <div style="font-size:12px;color:#9aacce;margin-top:6px;">${industry?.name || ''} · ${getPeriodLabel()}</div>
+                </div>`;
+
+            try {
+                const stockCodes = companies.map(c => c.stock_code).join(',');
+                const res = await fetch(
+                    `${WORKER_URL}/api/financial?stock_codes=${encodeURIComponent(stockCodes)}&year=${year}&quarter=${quarter}`
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+
+                if (data.status !== 'success') throw new Error(data.message || 'API 오류');
+
+                // 회사명 병합
+                const nameMap = Object.fromEntries(allCompanies.map(c => [c.stock_code, c.name]));
+                const metrics = data.list.map(item => ({
+                    ...item,
+                    companyName: nameMap[item.stockCode] || item.stockCode,
+                }));
+
+                apiCache.set(cacheKey, metrics);
+                currentMetrics = metrics;
+                renderResults(metrics);
+
+            } catch (e) {
+                resultsContent.innerHTML = `
+                    <div class="error">
+                        <strong>데이터 조회 실패</strong><br>
+                        ${e.message}<br>
+                        <small style="color:#999;margin-top:6px;display:block;">잠시 후 다시 시도해 주세요.</small>
+                    </div>`;
+            }
+        }
+
+        function renderResults(metrics) {
+            const industryCode = document.getElementById('industrySelect').value;
+            const companySearch = document.getElementById('companySearch').value.trim().toLowerCase();
+            const sortBy = document.getElementById('sortBy').value;
+            const resultsContent = document.getElementById('resultsContent');
+            const industry = INDUSTRY_DATA.industries.find(item => item.code === industryCode);
+
             const filteredMetrics = metrics
                 .filter(item => !companySearch || item.companyName.toLowerCase().includes(companySearch))
                 .sort((a, b) => {
                     if (sortBy === 'name-asc') return a.companyName.localeCompare(b.companyName, 'ko');
-                    if (sortBy === 'revenue-desc') return b.revenue - a.revenue;
-                    if (sortBy === 'opm-desc') return b.opMargin - a.opMargin;
-                    if (sortBy === 'cogsRate-asc') return a.cogsRate - b.cogsRate;
-                    if (sortBy === 'growth-desc') return b.revenueGrowth - a.revenueGrowth;
+                    if (sortBy === 'revenue-desc') return (b.revenue || 0) - (a.revenue || 0);
+                    if (sortBy === 'opm-desc') return (b.opMargin || 0) - (a.opMargin || 0);
+                    if (sortBy === 'cogsRate-asc') return (a.cogsRate || 0) - (b.cogsRate || 0);
+                    if (sortBy === 'growth-desc') return (b.revenueGrowth || 0) - (a.revenueGrowth || 0);
                     return 0;
                 });
+
             let companyRows = '';
             filteredMetrics.forEach((item) => {
-                const prevRevenue = item.revenue / (1 + item.revenueGrowth / 100);
-                const prevCogs = item.cogs / (1 + (item.revenueGrowth - 2) / 100);
-                const prevSga = item.sga / (1 + (item.revenueGrowth - 1.5) / 100);
-                const prevOp = item.opIncome / (1 + (item.revenueGrowth - 4) / 100);
-                const prevPretax = item.pretaxIncome / (1 + (item.revenueGrowth - 4.5) / 100);
-                const prevDebtRatio = 95 + getSeededRandom(Number(item.stockCode) + 19) * 85;
-                const debtRatio = 90 + getSeededRandom(Number(item.stockCode) + 31) * 90;
-                const debtDiff = debtRatio - prevDebtRatio;
+                const revGrowth = growthRate(item.revenue, item.prevRevenue);
+                const cogsGrowth = growthRate(item.cogs, item.prevCogs);
+                const sgaGrowth = growthRate(item.sga, item.prevSga);
+                const opGrowth = growthRate(item.opIncome, item.prevOpIncome);
+                const pretaxGrowth = growthRate(item.pretaxIncome, item.prevPretaxIncome);
 
                 const rowClass = item.stockCode === selectedCompanyCode ? 'clickable-row selected-row' : 'clickable-row';
                 companyRows += `
                     <tr class="${rowClass}" onclick="selectCompanyFromTable('${item.stockCode}')">
                         <td>${item.companyName}</td>
-                        <td class="${getMetricClass(debtDiff)}">${formatSignedPercent(debtDiff)}</td>
-                        <td>${formatSignedPercent(item.opMargin)}</td>
-                        <td>${formatSignedPercent(item.netMargin)}</td>
-                        <td>${formatSignedPercent(item.sgaRate)}</td>
-                        <td class="${getMetricClass(item.revenueGrowth)}">${formatSignedPercent(item.revenueGrowth)}</td>
-                        <td>${formatSignedPercent(item.cogsRate)}</td>
+                        <td>-</td>
+                        <td>${item.opMargin ? formatSignedPercent(item.opMargin) : '-'}</td>
+                        <td>${item.netMargin ? formatSignedPercent(item.netMargin) : '-'}</td>
+                        <td>${item.sgaRate ? formatSignedPercent(item.sgaRate) : '-'}</td>
+                        <td class="${getMetricClass(revGrowth)}">${formatSignedPercent(revGrowth)}</td>
+                        <td>${item.cogsRate ? formatSignedPercent(item.cogsRate) : '-'}</td>
 
-                        <td>${formatMillionKRW(item.revenue)}</td>
-                        <td>${formatMillionKRW(prevRevenue)}</td>
-                        <td class="${getMetricClass(item.revenueGrowth)}">${formatSignedPercent(item.revenueGrowth)}</td>
+                        <td>${formatMillion(item.revenue)}</td>
+                        <td>${formatMillion(item.prevRevenue)}</td>
+                        <td class="${getMetricClass(revGrowth)}">${formatSignedPercent(revGrowth)}</td>
 
-                        <td>${formatMillionKRW(item.cogs)}</td>
-                        <td>${formatMillionKRW(prevCogs)}</td>
-                        <td class="${getMetricClass(item.revenueGrowth - 2)}">${formatSignedPercent(item.revenueGrowth - 2)}</td>
+                        <td>${formatMillion(item.cogs)}</td>
+                        <td>${formatMillion(item.prevCogs)}</td>
+                        <td class="${getMetricClass(cogsGrowth)}">${formatSignedPercent(cogsGrowth)}</td>
 
-                        <td>${formatMillionKRW(item.sga)}</td>
-                        <td>${formatMillionKRW(prevSga)}</td>
-                        <td class="${getMetricClass(item.revenueGrowth - 1.5)}">${formatSignedPercent(item.revenueGrowth - 1.5)}</td>
+                        <td>${formatMillion(item.sga)}</td>
+                        <td>${formatMillion(item.prevSga)}</td>
+                        <td class="${getMetricClass(sgaGrowth)}">${formatSignedPercent(sgaGrowth)}</td>
 
-                        <td>${formatMillionKRW(item.opIncome)}</td>
-                        <td>${formatMillionKRW(prevOp)}</td>
-                        <td class="${getMetricClass(item.revenueGrowth - 4)}">${formatSignedPercent(item.revenueGrowth - 4)}</td>
+                        <td>${formatMillion(item.opIncome)}</td>
+                        <td>${formatMillion(item.prevOpIncome)}</td>
+                        <td class="${getMetricClass(opGrowth)}">${formatSignedPercent(opGrowth)}</td>
 
-                        <td>${formatMillionKRW(item.pretaxIncome)}</td>
-                        <td>${formatMillionKRW(prevPretax)}</td>
-                        <td class="${getMetricClass(item.revenueGrowth - 4.5)}">${formatSignedPercent(item.revenueGrowth - 4.5)}</td>
+                        <td>${formatMillion(item.pretaxIncome)}</td>
+                        <td>${formatMillion(item.prevPretaxIncome)}</td>
+                        <td class="${getMetricClass(pretaxGrowth)}">${formatSignedPercent(pretaxGrowth)}</td>
                     </tr>
                 `;
             });
 
+            // 선택 기업 상세
+            const selectedItem = metrics.find(m => m.stockCode === selectedCompanyCode);
             let selectedDashboard = `
                 <div class="hint-card">
-                    회사를 선택하면 아래에 상세 재무정보(요약 카드, 손익계산서, 분기 추이, 재무비율)가 표시됩니다.
-                </div>
-            `;
+                    행을 클릭하면 해당 기업의 상세 재무정보가 표시됩니다.
+                </div>`;
 
-            if (selectedMetric) {
-                const totalRevenue = selectedMetric.revenue;
-                const totalOpIncome = selectedMetric.opIncome;
-                const totalNetIncome = selectedMetric.netIncome;
-                const avgGrowth = selectedMetric.revenueGrowth;
-                const avgOp = selectedMetric.opMargin;
-                const avgNet = selectedMetric.netMargin;
-                const prevRevenue = totalRevenue / (1 + avgGrowth / 100);
-                const debtRatio = 80 + getSeededRandom(Number(selectedMetric.stockCode) + 91) * 70;
-                const currentRatio = 95 + getSeededRandom(Number(selectedMetric.stockCode) + 77) * 80;
-                const equityRatio = 32 + getSeededRandom(Number(selectedMetric.stockCode) + 11) * 35;
+            if (selectedItem) {
+                const rev = selectedItem.revenue;
+                const prevRev = selectedItem.prevRevenue;
+                const op = selectedItem.opIncome;
+                const prevOp = selectedItem.prevOpIncome;
+                const net = selectedItem.netIncome;
+                const cogs = selectedItem.cogs;
+                const prevCogs = selectedItem.prevCogs;
+                const sga = selectedItem.sga;
+                const prevSga = selectedItem.prevSga;
+                const pretax = selectedItem.pretaxIncome;
+                const prevPretax = selectedItem.prevPretaxIncome;
+                const revGrowth = growthRate(rev, prevRev);
+                const opGrowth = growthRate(op, prevOp);
+                const netGrowth = growthRate(net, selectedItem.prevNetIncome);
+                const cogsGrowth = growthRate(cogs, prevCogs);
+                const sgaGrowth = growthRate(sga, prevSga);
+                const pretaxGrowth = growthRate(pretax, prevPretax);
+                const grossProfit = rev && cogs ? rev - cogs : null;
+                const prevGrossProfit = prevRev && prevCogs ? prevRev - prevCogs : null;
+                const grossGrowth = growthRate(grossProfit, prevGrossProfit);
 
-                const quarterRevenue = [0.24, 0.22, 0.25, 0.29].map(weight => totalRevenue * weight);
-                const quarterOp = [0.21, 0.23, 0.22, 0.34].map(weight => totalOpIncome * weight);
-                const maxRevenue = Math.max(...quarterRevenue);
-                const quarterBars = quarterRevenue.map((rev, idx) => {
-                    const op = quarterOp[idx];
-                    const revHeight = Math.max(16, (rev / maxRevenue) * 150);
-                    const opHeight = Math.max(8, (Math.abs(op) / maxRevenue) * 150);
-                    return `
-                        <div class="q-col">
-                            <div class="bars">
-                                <div class="bar bar-rev" style="height:${revHeight}px"></div>
-                                <div class="bar bar-op" style="height:${opHeight}px"></div>
-                            </div>
-                            <div class="q-label">${idx + 1}Q</div>
+                // 분기별 차트 (연간 비율 추정)
+                const quarterWeights = [0.24, 0.22, 0.25, 0.29];
+                const qRevs = quarterWeights.map(w => (rev || 0) * w);
+                const qOps = quarterWeights.map(w => (op || 0) * w);
+                const maxRev = Math.max(...qRevs, 1);
+                const quarterBars = qRevs.map((qr, idx) => {
+                    const qo = qOps[idx];
+                    const revH = Math.max(16, (qr / maxRev) * 150);
+                    const opH = Math.max(8, (Math.abs(qo) / maxRev) * 150);
+                    return `<div class="q-col">
+                        <div class="bars">
+                            <div class="bar bar-rev" style="height:${revH}px"></div>
+                            <div class="bar bar-op" style="height:${opH}px"></div>
                         </div>
-                    `;
+                        <div class="q-label">${idx + 1}Q</div>
+                    </div>`;
                 }).join('');
 
                 selectedDashboard = `
-                    <h2>선택 기업 재무정보 <span style="font-size:13px;color:#7488a6;font-weight:500;">— ${selectedMetric.companyName} · ${getPeriodLabel()}</span></h2>
-
+                    <h2>선택 기업 재무정보 <span style="font-size:13px;color:#7488a6;font-weight:500;">— ${selectedItem.companyName} · ${getPeriodLabel()}</span></h2>
                     <div class="dashboard-grid">
                         <div class="kpi-card">
                             <div class="kpi-title">매출액</div>
-                            <div class="kpi-value">${formatEokFromMillion(totalRevenue)}</div>
-                            <div class="kpi-delta ${getMetricClass(avgGrowth)}">${formatSignedPercent(avgGrowth)} 전기비</div>
+                            <div class="kpi-value">${formatEok(rev)}</div>
+                            <div class="kpi-delta ${getMetricClass(revGrowth)}">${formatSignedPercent(revGrowth)} 전기비</div>
                         </div>
                         <div class="kpi-card">
                             <div class="kpi-title">영업이익</div>
-                            <div class="kpi-value">${formatEokFromMillion(totalOpIncome)}</div>
-                            <div class="kpi-delta ${getMetricClass(avgOp)}">${formatSignedPercent(avgOp - 6.0)} 전기비</div>
+                            <div class="kpi-value">${formatEok(op)}</div>
+                            <div class="kpi-delta ${getMetricClass(opGrowth)}">${formatSignedPercent(opGrowth)} 전기비</div>
                         </div>
                         <div class="kpi-card">
                             <div class="kpi-title">당기순이익</div>
-                            <div class="kpi-value">${formatEokFromMillion(totalNetIncome)}</div>
-                            <div class="kpi-delta ${getMetricClass(avgNet)}">${formatSignedPercent(avgNet - 4.0)} 전기비</div>
+                            <div class="kpi-value">${formatEok(net)}</div>
+                            <div class="kpi-delta ${getMetricClass(netGrowth)}">${formatSignedPercent(netGrowth)} 전기비</div>
                         </div>
                         <div class="kpi-card">
                             <div class="kpi-title">영업이익률</div>
-                            <div class="kpi-value">${avgOp.toFixed(1)}%</div>
-                            <div class="kpi-delta ${getMetricClass(avgOp - 5)}">${formatSignedPercent(avgOp - 5)} 전기비</div>
+                            <div class="kpi-value">${selectedItem.opMargin ? selectedItem.opMargin.toFixed(1) + '%' : '-'}</div>
+                            <div class="kpi-delta ${getMetricClass(opGrowth)}">${formatSignedPercent(opGrowth)} 전기비</div>
                         </div>
                     </div>
-
                     <div class="panel-grid">
                         <div class="panel">
-                            <div class="panel-title">손익계산서 요약</div>
+                            <div class="panel-title">손익계산서 요약 (단위: 백만원)</div>
                             <table class="table-compact">
                                 <thead>
-                                    <tr>
-                                        <th>계정과목</th>
-                                        <th>${new Date().getFullYear()}년</th>
-                                        <th>${new Date().getFullYear() - 1}년</th>
-                                        <th>증감률</th>
-                                    </tr>
+                                    <tr><th>계정과목</th><th>당기</th><th>전기</th><th>증감률</th></tr>
                                 </thead>
                                 <tbody>
-                                    <tr>
-                                        <td>매출액</td>
-                                        <td>${formatEokFromMillion(totalRevenue)}</td>
-                                        <td>${formatEokFromMillion(prevRevenue)}</td>
-                                        <td class="${getMetricClass(avgGrowth)}">${formatSignedPercent(avgGrowth)}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>매출총이익</td>
-                                        <td>${formatEokFromMillion(totalRevenue - selectedMetric.cogs)}</td>
-                                        <td>${formatEokFromMillion(prevRevenue * 0.5)}</td>
-                                        <td class="positive">+6.8%</td>
-                                    </tr>
-                                    <tr>
-                                        <td>판매비와관리비</td>
-                                        <td>${formatEokFromMillion(selectedMetric.sga)}</td>
-                                        <td>${formatEokFromMillion(selectedMetric.sga * 0.92)}</td>
-                                        <td class="positive">+8.7%</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>영업이익</strong></td>
-                                        <td><strong>${formatEokFromMillion(totalOpIncome)}</strong></td>
-                                        <td>${formatEokFromMillion(totalOpIncome * 1.15)}</td>
-                                        <td class="negative">-13.0%</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>당기순이익</strong></td>
-                                        <td><strong>${formatEokFromMillion(totalNetIncome)}</strong></td>
-                                        <td>${formatEokFromMillion(totalNetIncome * 1.09)}</td>
-                                        <td class="negative">-8.3%</td>
-                                    </tr>
+                                    <tr><td>매출액</td><td>${formatMillion(rev)}</td><td>${formatMillion(prevRev)}</td><td class="${getMetricClass(revGrowth)}">${formatSignedPercent(revGrowth)}</td></tr>
+                                    <tr><td>매출원가</td><td>${formatMillion(cogs)}</td><td>${formatMillion(prevCogs)}</td><td class="${getMetricClass(cogsGrowth)}">${formatSignedPercent(cogsGrowth)}</td></tr>
+                                    <tr><td>매출총이익</td><td>${formatMillion(grossProfit)}</td><td>${formatMillion(prevGrossProfit)}</td><td class="${getMetricClass(grossGrowth)}">${formatSignedPercent(grossGrowth)}</td></tr>
+                                    <tr><td>판매비와관리비</td><td>${formatMillion(sga)}</td><td>${formatMillion(prevSga)}</td><td class="${getMetricClass(sgaGrowth)}">${formatSignedPercent(sgaGrowth)}</td></tr>
+                                    <tr><td><strong>영업이익</strong></td><td><strong>${formatMillion(op)}</strong></td><td>${formatMillion(prevOp)}</td><td class="${getMetricClass(opGrowth)}">${formatSignedPercent(opGrowth)}</td></tr>
+                                    <tr><td>세전이익</td><td>${formatMillion(pretax)}</td><td>${formatMillion(prevPretax)}</td><td class="${getMetricClass(pretaxGrowth)}">${formatSignedPercent(pretaxGrowth)}</td></tr>
+                                    <tr><td><strong>당기순이익</strong></td><td><strong>${formatMillion(net)}</strong></td><td>${formatMillion(selectedItem.prevNetIncome)}</td><td class="${getMetricClass(netGrowth)}">${formatSignedPercent(netGrowth)}</td></tr>
                                 </tbody>
                             </table>
                         </div>
-
                         <div class="panel">
-                            <div class="panel-title">분기별 매출·영업이익</div>
+                            <div class="panel-title">분기별 매출·영업이익 (추정)</div>
                             <div class="chart-box">${quarterBars}</div>
                         </div>
-                    </div>
-
-                    <div class="panel">
-                        <div class="panel-title">재무상태표 요약</div>
-                        <div class="ratio-row">
-                            <div class="ratio-item">
-                                부채비율
-                                <strong>${debtRatio.toFixed(1)}%</strong>
-                            </div>
-                            <div class="ratio-item">
-                                유동비율
-                                <strong>${currentRatio.toFixed(1)}%</strong>
-                            </div>
-                            <div class="ratio-item">
-                                자기자본비율
-                                <strong>${equityRatio.toFixed(1)}%</strong>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                    </div>`;
             }
 
             resultsContent.innerHTML = `
-                <h2>회사별 재무 현황 <span style="font-size:13px;color:#7488a6;font-weight:500;">— ${industry?.name || ''} · ${getPeriodLabel()}</span></h2>
+                <h2>회사별 재무 현황 <span style="font-size:13px;color:#7488a6;font-weight:500;">— ${industry?.name || ''} · ${getPeriodLabel()} (단위: 백만원)</span></h2>
                 <div class="data-table-wrap">
                     <table class="financial-table">
                         <thead>
@@ -1193,32 +1179,16 @@
                                 <th>판관비율</th>
                                 <th>매출증감률</th>
                                 <th>매출원가율</th>
-
-                                <th>당기</th>
-                                <th>전기</th>
-                                <th>증감률</th>
-
-                                <th>당기</th>
-                                <th>전기</th>
-                                <th>증감률</th>
-
-                                <th>당기</th>
-                                <th>전기</th>
-                                <th>증감률</th>
-
-                                <th>당기</th>
-                                <th>전기</th>
-                                <th>증감률</th>
-
-                                <th>당기</th>
-                                <th>전기</th>
-                                <th>증감률</th>
+                                <th>당기</th><th>전기</th><th>증감률</th>
+                                <th>당기</th><th>전기</th><th>증감률</th>
+                                <th>당기</th><th>전기</th><th>증감률</th>
+                                <th>당기</th><th>전기</th><th>증감률</th>
+                                <th>당기</th><th>전기</th><th>증감률</th>
                             </tr>
                         </thead>
-                        <tbody>${companyRows || '<tr><td colspan="22">검색 결과가 없습니다.</td></tr>'}</tbody>
+                        <tbody>${companyRows || '<tr><td colspan="22" style="text-align:center;padding:30px;">검색 결과가 없습니다.</td></tr>'}</tbody>
                     </table>
                 </div>
-
                 ${selectedDashboard}
             `;
         }
@@ -1231,6 +1201,8 @@
             document.getElementById('yearSelect').value = '2025';
             document.getElementById('quarterSelect').value = 'Q4';
             selectedCompanyCode = '';
+            currentMetrics = [];
+            apiCache.clear();
             renderIndustryDashboard();
         }
 
