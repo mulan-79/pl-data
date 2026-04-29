@@ -407,7 +407,7 @@ function renderResults(metrics){
 
     const mkt=item.market||'KOSPI';
     const mktBadge='<span class="badge-market '+(mkt==='KOSDAQ'?'badge-kosdaq':'badge-kospi')+'">'+mkt+'</span>';
-    return '<tr class="'+(isSel?'selected':'')+'" onclick="selectRow(''+item.stockCode+'')">'
+    return '<tr class="'+(isSel?'selected':'')+'" onclick="selectRow(\''+item.stockCode+'\')">'
       +'<td class="col-co" style="padding:0 16px;"><div style="display:flex;align-items:center;gap:6px;"><div class="rank-badge">'+(ri+1)+'</div>'+mktBadge+'<span style="font-weight:600;font-size:13px;">'+(item.companyName||item.stockCode)+'</span></div></td>'
       +opmCell
       +'<td class="num '+pctCls(item.netMargin)+'" style="text-align:right;border-left:1px solid #f1f5f9;">'+fmtPct(item.netMargin)+'</td>'
