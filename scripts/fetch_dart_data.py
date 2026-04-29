@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 """
-DART 재무데이터 수집 스크립트 (fnlttSinglAcntAll 버전 - 별도기준)
+DART 재무데이터 수집 스크립트 (병렬 버전 - ThreadPoolExecutor)
 Usage: python scripts/fetch_dart_data.py [year] [quarter]
-  year:    연도 (예: 2024)  기본값: 전년도
-  quarter: annual / Q1 / Q2 / Q3 / Q4  기본값: annual
 """
-import json, os, sys, time, requests
+import json, os, sys, time, requests, threading
 from datetime import datetime, date
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 DART_API_KEY = os.environ.get('DART_API_KEY', '')
-DART_BASE = 'https://opendart.fss.or.kr/api'
+DART_BASE    = 'https://opendart.fss.or.kr/api'
+WORKERS      = 5   # 동시 요청 수 (DART rate limit 고려)
 
 REPRT_CODE = {
-    'Q1': '11013',
-    'Q2': '11012',
-    'Q3': '11014',
-    'Q4': '11011',
-    'annual': '11011',
+    'Q1': '11013', 'Q2': '11012', 'Q3': '11014',
+    'Q4': '11011', 'annual': '11011',
 }
+
+_lock = threading.Lock()
 
 def parse_num(s):
     if not s:
@@ -27,49 +26,49 @@ def parse_num(s):
     except Exception:
         return 0
 
-def fetch_single_all(corp_code, year, reprt_code, retry=2):
-    """
-    fnlttSinglAcntAll: 단일회사 전체 재무제표 조회
-    OFS(별도) 우선 시도 → 없으면 CFS(연결) 폴백
-    반환: (rows, fs_div_used)
-    """
-    url = f'{DART_BASE}/fnlttSinglAcntAll.json'
 
+def fetch_single_all(corp_code, year, reprt_code, retry=1):
+    """OFS 우선 → CFS 폴백. timeout 단축(15s), retry 1회"""
+    url = f'{DART_BASE}/fnlttSinglAcntAll.json'
     for fs_div in ['OFS', 'CFS']:
         params = {
             'crtfc_key': DART_API_KEY,
-            'corp_code': corp_code,
-            'bsns_year': year,
+            'corp_code':  corp_code,
+            'bsns_year':  year,
             'reprt_code': reprt_code,
-            'fs_div': fs_div,
+            'fs_div':     fs_div,
         }
         for attempt in range(retry + 1):
             try:
-                resp = requests.get(url, params=params, timeout=30)
+                resp = requests.get(url, params=params, timeout=15)
                 data = resp.json()
                 status = data.get('status')
                 if status == '000':
                     rows = data.get('list', [])
                     if rows:
                         return rows, fs_div
-                    break  # 빈 결과 → 다음 fs_div 시도
-                elif status in ('013', '020'):
-                    # 013: 조회 데이터 없음, 020: 요청 제한
                     break
-                # 그 외 오류는 재시도
+                elif status in ('013', '020'):
+                    break
+                if attempt < retry:
+                    time.sleep(0.5)
+            except Exception:
                 if attempt < retry:
                     time.sleep(1)
-            except Exception as e:
-                if attempt < retry:
-                    time.sleep(2)
                 else:
                     break
-        # OFS 실패 시 CFS로 계속
-
     return [], None
 
+
+def fetch_one(args):
+    """스레드 작업 단위: (sc, cc, year, reprt_code) → (sc, metrics, fs_used)"""
+    sc, cc, year, reprt_code = args
+    rows, fs_used = fetch_single_all(cc, year, reprt_code)
+    metrics = extract_metrics(sc, cc, rows)
+    return sc, metrics, fs_used
+
+
 def extract_metrics(stock_code, corp_code, rows):
-    """IS(손익계산서) 항목에서 필요한 지표 추출"""
     is_rows = [r for r in rows if r.get('sj_div') in ('IS', 'CIS')]
 
     def get(keywords):
@@ -79,7 +78,7 @@ def extract_metrics(stock_code, corp_code, rows):
                 if kw in nm:
                     return {
                         'current': parse_num(row.get('thstrm_amount')),
-                        'prev': parse_num(row.get('frmtrm_amount')),
+                        'prev':    parse_num(row.get('frmtrm_amount')),
                     }
         return {'current': 0, 'prev': 0}
 
@@ -116,48 +115,12 @@ def extract_metrics(stock_code, corp_code, rows):
         'netMargin':        round(net['current'] / r * 100, 2) if r else 0,
     }
 
-QUARTER_LABELS = {
-    'annual': '연간',
-    'Q1': '1분기',
-    'Q2': '상반기',
-    'Q3': '3분기(누적)',
-}
 
-PREV_QUARTER_LABELS = {
-    'annual': '연간',
-    'Q1': '1분기',
-    'Q2': '상반기',
-    'Q3': '3분기',
-}
-
-def auto_detect_periods():
-    """현재 날짜 기준으로 수집할 연도/분기 자동 결정"""
-    today = date.today()
-    year  = today.year
-    prev  = year - 1
-    periods = []
-
-    # 전년도 전체 분기
-    periods.append((str(prev), 'annual'))
-    periods.append((str(prev), 'Q1'))
-    periods.append((str(prev), 'Q2'))
-    periods.append((str(prev), 'Q3'))
-
-    # 당해연도 분기 (공시 일정 기준)
-    if today.month >= 4:
-        periods.append((str(year), 'annual'))
-    if today.month >= 5:
-        periods.append((str(year), 'Q1'))
-    if today.month >= 8:
-        periods.append((str(year), 'Q2'))
-    if today.month >= 11:
-        periods.append((str(year), 'Q3'))
-
-    return periods
+QUARTER_LABELS      = {'annual':'연간','Q1':'1분기','Q2':'상반기','Q3':'3분기(누적)'}
+PREV_QUARTER_LABELS = {'annual':'연간','Q1':'1분기','Q2':'상반기','Q3':'3분기'}
 
 
 def build_manifest(data_dir):
-    """수집된 파일 목록으로 manifest.json 생성"""
     import re
     periods = []
     for fname in sorted(os.listdir(data_dir), reverse=True):
@@ -165,23 +128,19 @@ def build_manifest(data_dir):
         if not m:
             continue
         year, quarter = m.group(1), m.group(2)
-        q_label  = QUARTER_LABELS.get(quarter, quarter)
-        pq_label = PREV_QUARTER_LABELS.get(quarter, '전기')
         periods.append({
             'key':       f'{year}_{quarter}',
             'year':      year,
             'quarter':   quarter,
-            'label':     f'{year}년 {q_label}',
-            'prevLabel': f'{int(year)-1}년 {pq_label} 대비',
+            'label':     f'{year}년 {QUARTER_LABELS.get(quarter, quarter)}',
+            'prevLabel': f'{int(year)-1}년 {PREV_QUARTER_LABELS.get(quarter,"전기")} 대비',
         })
-
     manifest = {
         'updated_at': datetime.now().strftime('%Y-%m-%d'),
         'latest':     periods[0]['key'] if periods else None,
         'periods':    periods,
     }
-    manifest_path = os.path.join(data_dir, 'manifest.json')
-    with open(manifest_path, 'w', encoding='utf-8') as f:
+    with open(os.path.join(data_dir, 'manifest.json'), 'w', encoding='utf-8') as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
     print(f'manifest.json 업데이트: {len(periods)}개 기간')
 
@@ -193,7 +152,6 @@ def main():
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    # 수집 대상 결정
     if len(sys.argv) >= 3:
         periods = [(sys.argv[1], sys.argv[2])]
     elif len(sys.argv) == 2:
@@ -203,13 +161,11 @@ def main():
 
     print(f'수집 대상: {periods}')
 
-    # 매핑 로드
     with open(os.path.join(base_dir, 'industry_data.json'), encoding='utf-8') as f:
         industry_data = json.load(f)
     with open(os.path.join(base_dir, 'api-worker', 'corp_code_map.json'), encoding='utf-8') as f:
         corp_code_map = json.load(f)
 
-    # stock_code → corp_code 매핑
     all_stock_codes = set()
     for companies in industry_data['companies'].values():
         for c in companies:
@@ -222,10 +178,8 @@ def main():
             stock_to_corp[sc] = cc
 
     total = len(stock_to_corp)
-    print(f'총 {len(all_stock_codes)}개 기업, corp_code 매핑 {total}개')
-    print(f'fnlttSinglAcntAll 방식: 회사별 개별 조회 (OFS 우선 → CFS 폴백)')
-    est_min = round(total * 0.35 / 60, 1)
-    print(f'예상 소요시간: 약 {est_min}분\n')
+    est_min = round(total / WORKERS * 1.2 / 60, 1)
+    print(f'총 {total}개 기업 | 동시 {WORKERS}개 요청 | 예상 약 {est_min}분/기간\n')
 
     os.makedirs(os.path.join(base_dir, 'data'), exist_ok=True)
 
@@ -236,52 +190,65 @@ def main():
             print(f'이미 존재, 건너뜀: {output_path}')
             continue
 
-        print(f'[{year} {quarter}] 데이터 수집 시작...')
+        print(f'[{year} {quarter}] 수집 시작...')
         reprt_code = REPRT_CODE.get(quarter, '11011')
 
-        companies_result = {}
-        ofs_count = 0
-        cfs_count = 0
-        empty_count = 0
-
         items = list(stock_to_corp.items())
-        for idx, (sc, cc) in enumerate(items):
-            if (idx + 1) % 50 == 0 or (idx + 1) == total:
-                print(f'  [{idx+1}/{total}] OFS:{ofs_count} CFS:{cfs_count} 데이터없음:{empty_count}')
+        task_args = [(sc, cc, year, reprt_code) for sc, cc in items]
 
-            rows, fs_used = fetch_single_all(cc, year, reprt_code)
-            companies_result[sc] = extract_metrics(sc, cc, rows)
+        companies_result = {}
+        ofs_count = cfs_count = empty_count = 0
+        done = 0
+        start_t = time.time()
 
-            if fs_used == 'OFS':
-                ofs_count += 1
-            elif fs_used == 'CFS':
-                cfs_count += 1
-            else:
-                empty_count += 1
+        with ThreadPoolExecutor(max_workers=WORKERS) as executor:
+            futures = {executor.submit(fetch_one, arg): arg for arg in task_args}
+            for future in as_completed(futures):
+                sc, metrics, fs_used = future.result()
+                companies_result[sc] = metrics
+                if fs_used == 'OFS':   ofs_count   += 1
+                elif fs_used == 'CFS': cfs_count   += 1
+                else:                  empty_count += 1
+                done += 1
+                if done % 200 == 0 or done == total:
+                    elapsed = time.time() - start_t
+                    rate = done / elapsed if elapsed else 0
+                    remain = (total - done) / rate / 60 if rate else 0
+                    print(f'  [{done}/{total}] OFS:{ofs_count} CFS:{cfs_count} 없음:{empty_count} '
+                          f'| 남은시간 ~{remain:.1f}분')
 
-            # rate limit 방지: 0.3초 대기
-            time.sleep(0.3)
-
+        elapsed_total = (time.time() - start_t) / 60
         non_zero = sum(1 for m in companies_result.values() if m['revenue'] > 0)
-        has_cogs  = sum(1 for m in companies_result.values() if m['cogs'] > 0)
-        has_sga   = sum(1 for m in companies_result.values() if m['sga'] > 0)
-        print(f'  완료: {total}개 중 매출 {non_zero}개 / 매출원가 {has_cogs}개 / 판관비 {has_sga}개 실데이터')
-        print(f'  기준: OFS(별도) {ofs_count}개, CFS(연결) {cfs_count}개, 없음 {empty_count}개')
+        print(f'  완료 ({elapsed_total:.1f}분): 매출데이터 {non_zero}개 / OFS {ofs_count} / CFS {cfs_count} / 없음 {empty_count}')
 
         output = {
             'updated_at': datetime.now().strftime('%Y-%m-%d'),
-            'year':       year,
-            'quarter':    quarter,
-            'companies':  companies_result,
+            'year': year, 'quarter': quarter,
+            'companies': companies_result,
         }
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(output, f, ensure_ascii=False)
+        print(f'  저장: {output_path}\n')
 
-        print(f'  저장 완료: {output_path}\n')
-
-    # manifest.json 갱신
     build_manifest(os.path.join(base_dir, 'data'))
     print('\n완료!')
+
+
+def auto_detect_periods():
+    today = date.today()
+    year  = today.year
+    prev  = year - 1
+    periods = [
+        (str(prev), 'annual'),
+        (str(prev), 'Q1'),
+        (str(prev), 'Q2'),
+        (str(prev), 'Q3'),
+    ]
+    if today.month >= 4:  periods.append((str(year), 'annual'))
+    if today.month >= 5:  periods.append((str(year), 'Q1'))
+    if today.month >= 8:  periods.append((str(year), 'Q2'))
+    if today.month >= 11: periods.append((str(year), 'Q3'))
+    return periods
 
 
 if __name__ == '__main__':
