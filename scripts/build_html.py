@@ -1,29 +1,46 @@
 #!/usr/bin/env python3
-"""새 디자인 HTML 생성 스크립트"""
-import re, os
+"""새 디자인 HTML 생성 스크립트
+INDUSTRY_DATA 우선순위:
+  1. industry_data.json (항상 최신, build_industry_data.py가 갱신)
+  2. _industry_data.js 백업 (fallback)
+  3. dart_financial_website.html 내 추출 (legacy fallback)
+"""
+import re, os, json
 
 base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 src = os.path.join(base, 'dart_financial_website.html')
 backup = os.path.join(base, 'scripts', '_industry_data.js')
+industry_json_path = os.path.join(base, 'industry_data.json')
 
-with open(src, encoding='utf-8') as f:
-    old = f.read()
-
-# Extract INDUSTRY_DATA (if present in current file, save backup)
-idx_start = old.find('const INDUSTRY_DATA =')
-if idx_start != -1:
-    idx_end = old.find(';\n', idx_start) + 2
-    industry_line = old[idx_start:idx_end].strip()
-    # Save backup for future runs
+# 1순위: industry_data.json 읽기
+if os.path.exists(industry_json_path):
+    with open(industry_json_path, encoding='utf-8') as f:
+        industry_data = json.load(f)
+    industry_line = 'const INDUSTRY_DATA = ' + json.dumps(industry_data, ensure_ascii=False)
+    # 백업도 갱신
     with open(backup, 'w', encoding='utf-8') as f:
         f.write(industry_line)
-    print(f'INDUSTRY_DATA 추출 완료 ({len(industry_line)//1024}KB)')
-elif os.path.exists(backup):
-    with open(backup, encoding='utf-8') as f:
-        industry_line = f.read().strip()
-    print(f'INDUSTRY_DATA 백업에서 로드 ({len(industry_line)//1024}KB)')
+    total = sum(len(v) for v in industry_data['companies'].values())
+    kospi = sum(1 for v in industry_data['companies'].values() for c in v if c.get('market','KOSPI')=='KOSPI')
+    kosdaq = sum(1 for v in industry_data['companies'].values() for c in v if c.get('market')=='KOSDAQ')
+    print(f'INDUSTRY_DATA: industry_data.json 로드 ({len(industry_line)//1024}KB, 전체:{total}개 KOSPI:{kospi} KOSDAQ:{kosdaq})')
 else:
-    raise RuntimeError('INDUSTRY_DATA를 찾을 수 없습니다. dart_financial_website.html에 데이터가 있어야 합니다.')
+    # fallback: HTML 또는 백업에서 추출
+    with open(src, encoding='utf-8') as f:
+        old = f.read()
+    idx_start = old.find('const INDUSTRY_DATA =')
+    if idx_start != -1:
+        idx_end = old.find(';\n', idx_start) + 2
+        industry_line = old[idx_start:idx_end].strip()
+        with open(backup, 'w', encoding='utf-8') as f:
+            f.write(industry_line)
+        print(f'INDUSTRY_DATA 추출 완료 (HTML, {len(industry_line)//1024}KB)')
+    elif os.path.exists(backup):
+        with open(backup, encoding='utf-8') as f:
+            industry_line = f.read().strip()
+        print(f'INDUSTRY_DATA 백업에서 로드 ({len(industry_line)//1024}KB)')
+    else:
+        raise RuntimeError('INDUSTRY_DATA를 찾을 수 없습니다.')
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="ko">
@@ -108,6 +125,9 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
 .table-footer{padding:12px 20px;background:#f8fafc;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;}
 .footer-text{font-size:12px;color:#94a3b8;}
 .rank-badge{width:24px;height:24px;border-radius:6px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64748b;flex-shrink:0;}
+.badge-market{display:inline-block;padding:1px 5px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.02em;flex-shrink:0;line-height:16px;}
+.badge-kospi{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;}
+.badge-kosdaq{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;}
 /* Tooltip */
 .th-tip{position:relative;cursor:help;}
 .th-tip:hover .tip-body{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -370,7 +390,7 @@ async function renderIndustryDashboard(){
       const r=await fetch('/data/financial_'+year+'_'+quarter+'.json');
       if(!r.ok) throw new Error(year+'년 '+quarter+' 데이터가 아직 없습니다. (매주 월요일 자동 업데이트)');
       const d=await r.json();
-      apiCache.set(ck, allCo.map(c=>Object.assign({},d.companies[c.stock_code]||{stockCode:c.stock_code},{companyName:c.name})));
+      apiCache.set(ck, allCo.map(c=>Object.assign({},d.companies[c.stock_code]||{stockCode:c.stock_code},{companyName:c.name,market:c.market||'KOSPI'})));
     }catch(e){
       document.getElementById('tableBody').innerHTML='<tr><td colspan="18" style="text-align:center;padding:60px;color:#dc2626;">데이터 없음: '+e.message+'</td></tr>'; return;
     }
@@ -429,8 +449,10 @@ function renderResults(metrics){
       opmCell='<td class="num '+pctCls(item.opMargin)+'" style="text-align:right;">'+fmtPct(item.opMargin)+'</td>';
     }
 
+    const mkt=item.market||'KOSPI';
+    const mktBadge='<span class="badge-market '+(mkt==='KOSDAQ'?'badge-kosdaq':'badge-kospi')+'">'+mkt+'</span>';
     return '<tr class="'+(isSel?'selected':'')+'" onclick="selectRow(\''+item.stockCode+'\')">'
-      +'<td class="col-co" style="padding:0 16px;"><div style="display:flex;align-items:center;gap:8px;"><div class="rank-badge">'+(ri+1)+'</div><span style="font-weight:600;font-size:13px;">'+(item.companyName||item.stockCode)+'</span></div></td>'
+      +'<td class="col-co" style="padding:0 16px;"><div style="display:flex;align-items:center;gap:6px;"><div class="rank-badge">'+(ri+1)+'</div>'+mktBadge+'<span style="font-weight:600;font-size:13px;">'+(item.companyName||item.stockCode)+'</span></div></td>'
       +opmCell
       +'<td class="num '+pctCls(item.netMargin)+'" style="text-align:right;border-left:1px solid #f1f5f9;">'+fmtPct(item.netMargin)+'</td>'
       +'<td style="border-left:1px solid #f1f5f9;">'+miniBar(revG,30)+'</td>'
