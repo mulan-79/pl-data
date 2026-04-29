@@ -3,10 +3,6 @@ name: Cloudflare Pages 배포
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'data/**'         # 데이터 파일 변경은 fetch 워크플로우가 처리
-      - 'scripts/**'      # 스크립트 변경은 배포 불필요
-      - '.github/**'
 
 jobs:
   deploy:
