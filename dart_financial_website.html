@@ -307,7 +307,8 @@ async function loadManifest(){
 
 function initializeIndustries(){
   const s=document.getElementById('industrySelect');
-  INDUSTRY_DATA.industries.forEach(i=>{const o=document.createElement('option');o.value=i.code;o.textContent=i.name;s.appendChild(o);});
+  // 이름이 코드값과 동일한 항목(한글 업종명 없음)은 드롭다운에서 제외
+  INDUSTRY_DATA.industries.filter(i=>i.name!==i.code).forEach(i=>{const o=document.createElement('option');o.value=i.code;o.textContent=i.name;s.appendChild(o);});
 }
 
 const apiCache=new Map();
