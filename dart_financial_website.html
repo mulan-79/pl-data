@@ -449,16 +449,23 @@ function renderDetailPanel(item){
   const buildBars=(qRevs,qOps)=>{
     const maxR=Math.max(...qRevs.map(Math.abs),1);
     const maxOpAbs=Math.max(...qOps.map(Math.abs),1);
+    const halfH=28; // 제로선 기준 상하 최대 높이(px)
     return qRevs.map((qr,i)=>{
       const qo=qOps[i], opPos=qo>=0;
       const rh=Math.max(10,Math.abs(qr)/maxR*82);
-      const oh=Math.max(4,Math.abs(qo)/maxOpAbs*38);
-      const opBarCls=opPos?'bar-op-pos':'bar-op-neg';
-      const opAlign=opPos?'align-items:flex-end':'align-items:flex-start';
+      const oh=Math.max(3,Math.abs(qo)/maxOpAbs*halfH);
+      const opColor=opPos?'#1e3a8a':'#dc2626';
+      const opRadius=opPos?'3px 3px 0 0':'0 0 3px 3px';
+      // 양수: 제로선에서 위로, 음수: 제로선에서 아래로 (position:absolute 기준)
+      const opPos_css=opPos
+        ?'bottom:'+(halfH+1)+'px;border-radius:'+opRadius+';'
+        :'top:'+(halfH+1)+'px;border-radius:'+opRadius+';';
       return '<div class="q-col">'
         +'<div class="q-rev-zone"><div class="bar bar-rev" style="height:'+rh+'px;width:16px;"></div></div>'
-        +'<div class="q-zero"></div>'
-        +'<div class="q-op-zone" style="'+opAlign+';"><div class="'+opBarCls+'" style="height:'+oh+'px;width:10px;"></div></div>'
+        +'<div style="position:relative;height:'+(halfH*2)+'px;width:100%;display:flex;justify-content:center;">'
+          +'<div style="position:absolute;top:'+halfH+'px;left:0;right:0;height:1px;background:#e2e8f0;"></div>'
+          +'<div style="position:absolute;'+opPos_css+'height:'+oh+'px;width:10px;background:'+opColor+';"></div>'
+        +'</div>'
         +'<div class="q-label">'+(i+1)+'Q</div></div>';
     }).join('');
   };
@@ -513,18 +520,11 @@ async function fetchRealQuarterlyChart(sc,year,annualRev,annualOp,buildBars){
     if(legEl) legEl.innerHTML='<span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:#1e3a8a;">■</span> 영업이익 <span style="color:#cbd5e1;">— 연간 추정치</span>';
     return;
   }
-  const qRevs=[
-    cumRev.Q1||0,
-    (cumRev.Q2||0)-(cumRev.Q1||0),
-    (cumRev.Q3||0)-(cumRev.Q2||0),
-    annualRev-(cumRev.Q3||0)
-  ];
-  const qOps=[
-    cumOp.Q1||0,
-    (cumOp.Q2||0)-(cumOp.Q1||0),
-    (cumOp.Q3||0)-(cumOp.Q2||0),
-    annualOp-(cumOp.Q3||0)
-  ];
+  // Q1/Q2/Q3 파일은 각 분기 개별값(누적 아님) → Q4만 역산
+  const q1r=cumRev.Q1||0, q2r=cumRev.Q2||0, q3r=cumRev.Q3||0;
+  const q1o=cumOp.Q1||0,  q2o=cumOp.Q2||0,  q3o=cumOp.Q3||0;
+  const qRevs=[q1r, q2r, q3r, Math.max(0, annualRev-q1r-q2r-q3r)];
+  const qOps=[q1o, q2o, q3o, annualOp-q1o-q2o-q3o];
   el.innerHTML=buildBars(qRevs,qOps);
   const anyNeg=qOps.some(v=>v<0);
   if(legEl) legEl.innerHTML='<span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:'+(anyNeg?'#dc2626':'#1e3a8a')+';">■</span> 영업이익'+(anyNeg?' <span style="color:#dc2626;">(분기 적자 포함)</span>':'');
