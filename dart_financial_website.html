@@ -207,10 +207,6 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
         <span class="section-sub" id="sectionSub">업종을 선택하세요</span>
       </div>
     </div>
-    <div class="view-tabs">
-      <button class="view-tab active" id="tabFull" onclick="setViewMode('full')">전체</button>
-      <button class="view-tab" id="tabCompact" onclick="setViewMode('compact')">요약</button>
-    </div>
   </div>
 
   <div class="table-card">
@@ -227,22 +223,23 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
             <th colspan="2" style="background:#1e3a8a;color:white;font-size:11px;font-weight:600;letter-spacing:.04em;text-align:center;border-bottom:1px solid rgba(255,255,255,0.15);border-left:2px solid rgba(255,255,255,0.15);">세전이익</th>
           </tr>
           <tr style="background:#1e3a8a;">
-            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;">영업이익률<span class="tip-body">영업이익 ÷ 매출액</span></th>
-            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">순이익률<span class="tip-body">순이익 ÷ 매출액</span></th>
-            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">매출증감률<span class="tip-body">전기 대비 매출 증감</span></th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">증감률</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">증감률</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
-            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">증감률<span class="tip-body">영업이익 전기 대비</span></th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
-            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:right;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
+            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;">영업이익률<span class="tip-body">영업이익 ÷ 매출액</span></th>
+            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">순이익률<span class="tip-body">순이익 ÷ 매출액</span></th>
+            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">매출증감률<span class="tip-body">전기 대비 매출 증감</span></th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">증감률</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">증감률</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
+            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">증감률<span class="tip-body">영업이익 전기 대비</span></th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
+            <th class="th-tip" style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">증감률<span class="tip-body">영업이익 전기 대비</span></th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:2px solid rgba(255,255,255,.15);">당기</th>
+            <th style="color:rgba(255,255,255,.85);font-size:11px;font-weight:500;text-align:center;padding:0 10px;border-left:1px solid rgba(255,255,255,.1);">전기</th>
           </tr>
         </thead>
         <tbody id="tableBody">
