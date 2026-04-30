@@ -107,13 +107,16 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
 .pl-table td{padding:8px 14px;border-bottom:1px solid #f1f5f9;}
 .pl-table td:not(:first-child){font-family:'JetBrains Mono',monospace;text-align:right;}
 .pl-table tr:last-child td{border-bottom:none;}
-.chart-box{padding:14px;display:flex;align-items:flex-end;gap:10px;height:140px;}
-.q-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:4px;}
-.bars{display:flex;align-items:flex-end;gap:3px;}
+.chart-box{padding:14px;display:flex;align-items:stretch;gap:8px;}
+.q-col{display:flex;flex-direction:column;align-items:center;flex:1;}
+.q-rev-zone{height:90px;display:flex;align-items:flex-end;justify-content:center;gap:3px;width:100%;}
+.q-zero{height:1px;background:#cbd5e1;width:100%;margin:1px 0;}
+.q-op-zone{height:44px;display:flex;justify-content:center;}
 .bar{border-radius:3px 3px 0 0;}
-.bar-rev{background:#c7d9ff;}
-.bar-op{background:#1e3a8a;}
-.q-label{font-size:10px;color:#94a3b8;}
+.bar-rev{background:#c7d9ff;border-radius:3px 3px 0 0;}
+.bar-op-pos{background:#1e3a8a;border-radius:3px 3px 0 0;}
+.bar-op-neg{background:#dc2626;border-radius:0 0 3px 3px;}
+.q-label{font-size:10px;color:#94a3b8;margin-top:4px;}
 </style>
 </head>
 <body>
@@ -442,10 +445,20 @@ function renderDetailPanel(item){
   const revG=growthRate(rev,prevRev), opG=growthRate(op,prevOp), netG=growthRate(net,item.prevNetIncome);
   const cogsG=growthRate(cogs,prevCogs), sgaG=growthRate(sga,prevSga);
   const kpi=(t,v,d,dv)=>'<div class="kpi-card"><div class="kpi-title">'+t+'</div><div class="kpi-val '+pctCls(dv)+'">'+v+'</div><div class="kpi-delta '+pctCls(dv)+'">'+d+'</div></div>';
-  const qw=[0.24,0.22,0.25,0.29], maxR=Math.max(...qw.map(w=>rev*w),1);
+  const qw=[0.24,0.22,0.25,0.29];
+  const maxR=Math.max(...qw.map(w=>rev*w),1);
+  const maxOpAbs=Math.max(...qw.map(w=>Math.abs(op)*w),1);
+  const opPos=op>=0;
   const bars=qw.map((w,i)=>{
-    const rh=Math.max(16,rev*w/maxR*100), oh=Math.max(8,Math.abs(op*w)/maxR*100);
-    return '<div class="q-col"><div class="bars"><div class="bar bar-rev" style="height:'+rh+'px;width:16px;"></div><div class="bar bar-op" style="height:'+oh+'px;width:10px;"></div></div><div class="q-label">'+(i+1)+'Q</div></div>';
+    const rh=Math.max(10,rev*w/maxR*82);
+    const oh=Math.max(4,Math.abs(op)*w/maxOpAbs*38);
+    const opBarCls=opPos?'bar-op-pos':'bar-op-neg';
+    const opAlign=opPos?'align-items:flex-end':'align-items:flex-start';
+    return '<div class="q-col">'
+      +'<div class="q-rev-zone"><div class="bar bar-rev" style="height:'+rh+'px;width:16px;"></div></div>'
+      +'<div class="q-zero"></div>'
+      +'<div class="q-op-zone" style="'+opAlign+';"><div class="'+opBarCls+'" style="height:'+oh+'px;width:10px;"></div></div>'
+      +'<div class="q-label">'+(i+1)+'Q</div></div>';
   }).join('');
   const plr=(label,c,pv,g,b)=>{
     const s=b?'font-weight:700;':'';
@@ -460,8 +473,8 @@ function renderDetailPanel(item){
         +'<table class="pl-table"><thead><tr style="background:#f8fafc;"><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;">계정과목</td><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;">당기</td><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;">전기</td><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;">증감률</td></tr></thead>'
         +'<tbody>'+plr('매출액',rev,prevRev,revG,true)+plr('매출원가',cogs,prevCogs,cogsG,false)+plr('판매비와관리비',sga,prevSga,sgaG,false)+plr('영업이익',op,prevOp,opG,true)+plr('세전이익',pretax,prevPretax,growthRate(pretax,prevPretax),false)+plr('당기순이익',net,item.prevNetIncome||0,netG,true)+'</tbody></table></div>'
       +'<div class="panel-box"><div class="panel-box-title">분기별 매출·영업이익 (추정)</div>'
-        +'<div class="chart-box" style="align-items:flex-end;gap:12px;">'+bars+'</div>'
-        +'<div style="padding:8px 14px;font-size:11px;color:#94a3b8;">■ 매출액 &nbsp;■ 영업이익 (연간 분기 추정)</div>'
+        +'<div class="chart-box">'+bars+'</div>'
+        +'<div style="padding:4px 14px 10px;font-size:11px;color:#94a3b8;"><span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:'+(opPos?'#1e3a8a':'#dc2626')+';">■</span> 영업이익'+(opPos?'':' <span style="color:#dc2626;">(적자)</span>')+' <span style="color:#cbd5e1;">— 연간 분기 추정치</span></div>'
       +'</div>'
     +'</div></div>';
   setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
