@@ -502,6 +502,16 @@ function renderResults(metrics){
 
 function selectRow(sc){selectedCompanyCode=(selectedCompanyCode===sc)?'':sc;renderResults(currentMetrics);}
 
+function getCompanyIndustryName(stockCode){
+  for(const [code,companies] of Object.entries(INDUSTRY_DATA.companies)){
+    if(companies.some(c=>c.stock_code===stockCode)){
+      const ind=INDUSTRY_DATA.industries.find(i=>i.code===code);
+      return ind&&ind.name!==ind.code?ind.name:'';
+    }
+  }
+  return '';
+}
+
 function renderDetailPanel(item){
   const p=document.getElementById('detailPanel');
   if(!item){p.innerHTML='';return;}
@@ -547,7 +557,8 @@ function renderDetailPanel(item){
     return '<tr><td style="'+s+'">'+label+'</td><td class="'+pctCls(c)+'" style="'+s+'">'+ct+'</td><td class="neutral" style="'+s+'">'+pt+'</td><td class="'+pctCls(g)+'" style="'+s+'">'+fmtPct(g)+'</td></tr>';
   };
   p.innerHTML='<div class="detail-panel">'
-    +'<h3>📊 '+item.companyName+' — '+getPeriodLabel()+' 재무상세</h3>'
+    +(()=>{const iname=getCompanyIndustryName(item.stockCode);const ibadge=iname?'<span style="display:inline-block;margin-left:8px;padding:2px 8px;border-radius:99px;background:#eff6ff;color:#1e40af;font-size:11px;font-weight:600;border:1px solid #bfdbfe;vertical-align:middle;">'+iname+'</span>':'';return '<h3 style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">📊 '+item.companyName+' — '+getPeriodLabel()+' 재무상세'+ibadge+'</h3>';})()
+
     +'<div class="kpi-grid">'+kpi('매출액',fmtEok(rev),fmtPct(revG)+' 전기비',revG)+kpi('영업이익',fmtEok(op),fmtPct(opG)+' 전기비',opG)+kpi('당기순이익',fmtEok(net),fmtPct(netG)+' 전기비',netG)+kpi('영업이익률',item.opMargin?item.opMargin.toFixed(1)+'%':'—',fmtPct(opG)+' 전기비',opG)+'</div>'
     +'<div class="panel-grid">'
       +'<div class="panel-box"><div class="panel-box-title">손익계산서 요약 (단위: 백만원)</div>'
