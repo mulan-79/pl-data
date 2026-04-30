@@ -600,11 +600,15 @@ async function fetchRealQuarterlyChart(sc,year,annualRev,annualOp,buildBars){
     if(legEl) legEl.innerHTML='<span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:#1e3a8a;">■</span> 영업이익 <span style="color:#cbd5e1;">— 연간 추정치</span>';
     return;
   }
-  // 각 Q파일은 개별 분기값(Q1=3개월, Q2=3개월, Q3=3개월) → Q4만 역산
-  const q1r=cumRev.Q1||0, q2r=cumRev.Q2||0, q3r=cumRev.Q3||0;
-  const q1o=cumOp.Q1||0,  q2o=cumOp.Q2||0,  q3o=cumOp.Q3||0;
-  const qRevs=[q1r, q2r, q3r, Math.max(0, annualRev-q1r-q2r-q3r)];
-  const qOps=[q1o, q2o, q3o, annualOp-q1o-q2o-q3o];
+  // Q파일은 누계값(Q1=3개월, Q2=6개월누계, Q3=9개월누계) → 개별 분기로 역산
+  const cumR1=cumRev.Q1||0, cumR2=cumRev.Q2||0, cumR3=cumRev.Q3||0;
+  const cumO1=cumOp.Q1||0,  cumO2=cumOp.Q2||0,  cumO3=cumOp.Q3||0;
+  const q1r=cumR1, q2r=cumR2-cumR1, q3r=cumR3-cumR2;
+  const q1o=cumO1, q2o=cumO2-cumO1, q3o=cumO3-cumO2;
+  const q4r=annualRev>0 ? annualRev-cumR3 : 0;
+  const q4o=annualRev>0 ? annualOp-cumO3  : 0;
+  const qRevs=[q1r, q2r, q3r, q4r];
+  const qOps=[q1o, q2o, q3o, q4o];
   el.innerHTML=buildBars(qRevs,qOps);
   const anyNeg=qOps.some(v=>v<0);
   if(legEl) legEl.innerHTML='<span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:'+(anyNeg?'#dc2626':'#1e3a8a')+';">■</span> 영업이익'+(anyNeg?' <span style="color:#dc2626;">(분기 적자 포함)</span>':'');
