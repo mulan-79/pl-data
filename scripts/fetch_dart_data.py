@@ -36,13 +36,21 @@ def extract_metrics(stock_code, corp_code, rows):
 
     def get(keywords):
         for kw in keywords:
+            matched = []
             for row in is_rows:
                 nm = row.get('account_nm', '').replace(' ', '')
                 if kw in nm:
-                    return {
-                        'current': parse_num(row.get('thstrm_amount')),
-                        'prev':    parse_num(row.get('frmtrm_amount')),
-                    }
+                    matched.append(row)
+            if not matched:
+                continue
+            # DART 분기보고서는 동일 계정에 '3개월'(개별분기)과 누계행이 같이 올 수 있음
+            # → 'thstrm_nm'에 '3개월'이 없는 행(누계) 우선 선택
+            ytd = [r for r in matched if '3개월' not in (r.get('thstrm_nm') or '')]
+            row = ytd[0] if ytd else matched[0]
+            return {
+                'current': parse_num(row.get('thstrm_amount')),
+                'prev':    parse_num(row.get('frmtrm_amount')),
+            }
         return {'current': 0, 'prev': 0}
 
     rev    = get(['매출액', '수익(매출액)', '영업수익'])
