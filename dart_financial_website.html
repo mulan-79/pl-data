@@ -449,22 +449,23 @@ function renderDetailPanel(item){
   const buildBars=(qRevs,qOps)=>{
     const maxR=Math.max(...qRevs.map(Math.abs),1);
     const maxOpAbs=Math.max(...qOps.map(Math.abs),1);
-    const halfH=28; // 제로선 기준 상하 최대 높이(px)
+    const posH=82; // 제로선 위 최대 높이(px)
+    const negH=22; // 제로선 아래 최대 높이(px)
+    const totalH=posH+negH;
     return qRevs.map((qr,i)=>{
       const qo=qOps[i], opPos=qo>=0;
-      const rh=Math.max(10,Math.abs(qr)/maxR*82);
-      const oh=Math.max(3,Math.abs(qo)/maxOpAbs*halfH);
+      const rh=Math.max(4,Math.abs(qr)/maxR*posH);
+      const oh=Math.max(3,Math.abs(qo)/maxOpAbs*(opPos?posH:negH));
       const opColor=opPos?'#1e3a8a':'#dc2626';
-      const opRadius=opPos?'3px 3px 0 0':'0 0 3px 3px';
-      // 양수: 제로선에서 위로, 음수: 제로선에서 아래로 (position:absolute 기준)
-      const opPos_css=opPos
-        ?'bottom:'+(halfH+1)+'px;border-radius:'+opRadius+';'
-        :'top:'+(halfH+1)+'px;border-radius:'+opRadius+';';
+      // 매출액(왼쪽)과 영업이익(오른쪽)을 나란히, 제로선 기준 위아래
       return '<div class="q-col">'
-        +'<div class="q-rev-zone"><div class="bar bar-rev" style="height:'+rh+'px;width:16px;"></div></div>'
-        +'<div style="position:relative;height:'+(halfH*2)+'px;width:100%;display:flex;justify-content:center;">'
-          +'<div style="position:absolute;top:'+halfH+'px;left:0;right:0;height:1px;background:#e2e8f0;"></div>'
-          +'<div style="position:absolute;'+opPos_css+'height:'+oh+'px;width:10px;background:'+opColor+';"></div>'
+        +'<div style="position:relative;height:'+totalH+'px;width:100%;">'
+          +'<div style="position:absolute;top:'+posH+'px;left:0;right:0;height:1px;background:#e2e8f0;"></div>'
+          +'<div style="position:absolute;bottom:'+negH+'px;left:50%;transform:translateX(-14px);height:'+rh+'px;width:14px;background:#c7d9ff;border-radius:3px 3px 0 0;"></div>'
+          +(opPos
+            ?'<div style="position:absolute;bottom:'+negH+'px;left:50%;transform:translateX(2px);height:'+oh+'px;width:9px;background:'+opColor+';border-radius:3px 3px 0 0;"></div>'
+            :'<div style="position:absolute;top:'+posH+'px;left:50%;transform:translateX(2px);height:'+oh+'px;width:9px;background:'+opColor+';border-radius:0 0 3px 3px;"></div>'
+          )
         +'</div>'
         +'<div class="q-label">'+(i+1)+'Q</div></div>';
     }).join('');
