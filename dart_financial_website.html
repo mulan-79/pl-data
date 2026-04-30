@@ -632,6 +632,12 @@ function resetFilters(){
 }
 
 document.addEventListener('DOMContentLoaded', async function(){
+  // ?embedded=1 이면 상단 헤더 숨김 (다른 사이트에 iframe으로 삽입될 때)
+  if(new URLSearchParams(location.search).get('embedded')==='1'){
+    const tb=document.querySelector('.topbar');
+    if(tb) tb.style.display='none';
+    document.querySelector('.page-wrap').style.paddingTop='12px';
+  }
   initializeIndustries();
   document.getElementById('industrySelect').value='32100';
   ['industrySelect','rowCount','sortBy'].forEach(id=>document.getElementById(id).addEventListener('change',renderIndustryDashboard));
