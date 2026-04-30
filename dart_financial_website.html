@@ -449,14 +449,14 @@ function renderDetailPanel(item){
   const sc=item.stockCode;
   const buildBars=(qRevs,qOps)=>{
     const maxR=Math.max(...qRevs.map(Math.abs),1);
-    const maxOpAbs=Math.max(...qOps.map(Math.abs),1);
     const posH=82; // 제로선 위 최대 높이(px)
     const negH=22; // 제로선 아래 최대 높이(px)
     const totalH=posH+negH;
     return qRevs.map((qr,i)=>{
       const qo=qOps[i], opPos=qo>=0;
       const rh=Math.max(4,Math.abs(qr)/maxR*posH);
-      const oh=Math.max(3,Math.abs(qo)/maxOpAbs*(opPos?posH:negH));
+      // 영업이익도 매출액과 동일 스케일(maxR) 기준 → 비율이 시각적으로 정확하게 표현
+      const oh=Math.max(3,Math.min(Math.abs(qo)/maxR*posH, opPos?posH:negH));
       const opColor=opPos?'#1e3a8a':'#dc2626';
       // 매출액(왼쪽)과 영업이익(오른쪽)을 나란히, 제로선 기준 위아래
       return '<div class="q-col">'
