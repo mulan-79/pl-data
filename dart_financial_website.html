@@ -268,7 +268,7 @@ const INDUSTRY_DATA = {"industries": [{"code": "011", "name": "011"}, {"code": "
 let selectedCompanyCode = '', currentMetrics = [], periodMeta = {}, viewMode = 'full';
 
 const fmt = v => v ? Math.round(v/1e6).toLocaleString('ko-KR') : '—';
-const fmtEok = v => { if(!v) return '—'; const e=v/1e8; return Math.abs(e)>=1e3?(e/1e3).toFixed(1)+'조':e.toFixed(1)+'억'; };
+const fmtEok = v => { if(!v) return '—'; const e=v/1e8; return Math.abs(e)>=10000?(e/10000).toFixed(1)+'조':Math.round(e).toLocaleString('ko-KR')+'억'; };
 const fmtPct = v => (v===null||v===undefined||isNaN(v)) ? '—' : (v>0?'+':'')+v.toFixed(1)+'%';
 const pctCls = v => (v===null||v===undefined||isNaN(v)) ? 'neutral' : v>0?'pos':v<0?'neg':'neutral';
 const growthRate = (c,p) => (!p||!c) ? null : (c-p)/Math.abs(p)*100;
@@ -445,21 +445,26 @@ function renderDetailPanel(item){
   const revG=growthRate(rev,prevRev), opG=growthRate(op,prevOp), netG=growthRate(net,item.prevNetIncome);
   const cogsG=growthRate(cogs,prevCogs), sgaG=growthRate(sga,prevSga);
   const kpi=(t,v,d,dv)=>'<div class="kpi-card"><div class="kpi-title">'+t+'</div><div class="kpi-val '+pctCls(dv)+'">'+v+'</div><div class="kpi-delta '+pctCls(dv)+'">'+d+'</div></div>';
-  const qw=[0.24,0.22,0.25,0.29];
-  const maxR=Math.max(...qw.map(w=>rev*w),1);
-  const maxOpAbs=Math.max(...qw.map(w=>Math.abs(op)*w),1);
-  const opPos=op>=0;
-  const bars=qw.map((w,i)=>{
-    const rh=Math.max(10,rev*w/maxR*82);
-    const oh=Math.max(4,Math.abs(op)*w/maxOpAbs*38);
-    const opBarCls=opPos?'bar-op-pos':'bar-op-neg';
-    const opAlign=opPos?'align-items:flex-end':'align-items:flex-start';
-    return '<div class="q-col">'
-      +'<div class="q-rev-zone"><div class="bar bar-rev" style="height:'+rh+'px;width:16px;"></div></div>'
-      +'<div class="q-zero"></div>'
-      +'<div class="q-op-zone" style="'+opAlign+';"><div class="'+opBarCls+'" style="height:'+oh+'px;width:10px;"></div></div>'
-      +'<div class="q-label">'+(i+1)+'Q</div></div>';
-  }).join('');
+  const sc=item.stockCode;
+  const buildBars=(qRevs,qOps)=>{
+    const maxR=Math.max(...qRevs.map(Math.abs),1);
+    const maxOpAbs=Math.max(...qOps.map(Math.abs),1);
+    return qRevs.map((qr,i)=>{
+      const qo=qOps[i], opPos=qo>=0;
+      const rh=Math.max(10,Math.abs(qr)/maxR*82);
+      const oh=Math.max(4,Math.abs(qo)/maxOpAbs*38);
+      const opBarCls=opPos?'bar-op-pos':'bar-op-neg';
+      const opAlign=opPos?'align-items:flex-end':'align-items:flex-start';
+      return '<div class="q-col">'
+        +'<div class="q-rev-zone"><div class="bar bar-rev" style="height:'+rh+'px;width:16px;"></div></div>'
+        +'<div class="q-zero"></div>'
+        +'<div class="q-op-zone" style="'+opAlign+';"><div class="'+opBarCls+'" style="height:'+oh+'px;width:10px;"></div></div>'
+        +'<div class="q-label">'+(i+1)+'Q</div></div>';
+    }).join('');
+  };
+  // 초기: 고정비율 추정치로 표시
+  const qwInit=[0.24,0.22,0.25,0.29];
+  const initBars=buildBars(qwInit.map(w=>rev*w), qwInit.map(w=>op*w));
   const plr=(label,c,pv,g,b)=>{
     const s=b?'font-weight:700;':'';
     const ct=c?Math.round(c/1e6).toLocaleString():'—', pt=pv?Math.round(pv/1e6).toLocaleString():'—';
@@ -472,12 +477,57 @@ function renderDetailPanel(item){
       +'<div class="panel-box"><div class="panel-box-title">손익계산서 요약 (단위: 백만원)</div>'
         +'<table class="pl-table"><thead><tr style="background:#f8fafc;"><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;">계정과목</td><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;">당기</td><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;">전기</td><td style="font-weight:600;padding:8px 14px;border-bottom:1px solid #e2e8f0;text-align:right;">증감률</td></tr></thead>'
         +'<tbody>'+plr('매출액',rev,prevRev,revG,true)+plr('매출원가',cogs,prevCogs,cogsG,false)+plr('판매비와관리비',sga,prevSga,sgaG,false)+plr('영업이익',op,prevOp,opG,true)+plr('세전이익',pretax,prevPretax,growthRate(pretax,prevPretax),false)+plr('당기순이익',net,item.prevNetIncome||0,netG,true)+'</tbody></table></div>'
-      +'<div class="panel-box"><div class="panel-box-title">분기별 매출·영업이익 (추정)</div>'
-        +'<div class="chart-box">'+bars+'</div>'
-        +'<div style="padding:4px 14px 10px;font-size:11px;color:#94a3b8;"><span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:'+(opPos?'#1e3a8a':'#dc2626')+';">■</span> 영업이익'+(opPos?'':' <span style="color:#dc2626;">(적자)</span>')+' <span style="color:#cbd5e1;">— 연간 분기 추정치</span></div>'
+      +'<div class="panel-box"><div class="panel-box-title">분기별 매출·영업이익</div>'
+        +'<div class="chart-box" id="qchart-'+sc+'">'+initBars+'</div>'
+        +'<div id="qlegend-'+sc+'" style="padding:4px 14px 10px;font-size:11px;color:#94a3b8;"><span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:#1e3a8a;">■</span> 영업이익 <span style="color:#cbd5e1;">— 추정 로딩 중…</span></div>'
       +'</div>'
     +'</div></div>';
   setTimeout(()=>p.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+  // 연간 조회일 때만 실제 분기 데이터 비동기 로드
+  const {year,quarter}=getSelectedPeriod();
+  if(quarter==='annual') fetchRealQuarterlyChart(sc,year,rev,op,buildBars);
+}
+
+async function fetchRealQuarterlyChart(sc,year,annualRev,annualOp,buildBars){
+  const cumRev={}, cumOp={};
+  try{
+    for(const q of ['Q1','Q2','Q3']){
+      const ck='qraw_'+year+'_'+q;
+      let cos;
+      if(apiCache.has(ck)){ cos=apiCache.get(ck); }
+      else{
+        const r=await fetch('/data/financial_'+year+'_'+q+'.json');
+        if(!r.ok) break;
+        const d=await r.json(); cos=d.companies||{};
+        apiCache.set(ck,cos);
+      }
+      const co=cos[sc]||cos[sc.padStart(6,'0')];
+      if(co){ cumRev[q]=co.revenue||0; cumOp[q]=co.opIncome||0; }
+    }
+  }catch(e){}
+  const hasData=cumRev.Q1||cumRev.Q2||cumRev.Q3;
+  const el=document.getElementById('qchart-'+sc);
+  const legEl=document.getElementById('qlegend-'+sc);
+  if(!el) return;
+  if(!hasData){
+    if(legEl) legEl.innerHTML='<span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:#1e3a8a;">■</span> 영업이익 <span style="color:#cbd5e1;">— 연간 추정치</span>';
+    return;
+  }
+  const qRevs=[
+    cumRev.Q1||0,
+    (cumRev.Q2||0)-(cumRev.Q1||0),
+    (cumRev.Q3||0)-(cumRev.Q2||0),
+    annualRev-(cumRev.Q3||0)
+  ];
+  const qOps=[
+    cumOp.Q1||0,
+    (cumOp.Q2||0)-(cumOp.Q1||0),
+    (cumOp.Q3||0)-(cumOp.Q2||0),
+    annualOp-(cumOp.Q3||0)
+  ];
+  el.innerHTML=buildBars(qRevs,qOps);
+  const anyNeg=qOps.some(v=>v<0);
+  if(legEl) legEl.innerHTML='<span style="color:#c7d9ff;">■</span> 매출액 &nbsp;<span style="color:'+(anyNeg?'#dc2626':'#1e3a8a')+';">■</span> 영업이익'+(anyNeg?' <span style="color:#dc2626;">(분기 적자 포함)</span>':'');
 }
 
 function csvDownload(){
