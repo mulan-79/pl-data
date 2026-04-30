@@ -26,6 +26,7 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
 .header-select option{background:#1e3a8a;color:white;}
 /* Filter bar */
 .filter-bar{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+.f-industry{flex:0 0 280px;}.f-rowcount{flex:0 0 100px;}.f-search{flex:1 1 200px;}.f-sort{flex:0 0 180px;}
 .filter-label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:6px;letter-spacing:0.04em;}
 .ctrl-wrap{position:relative;}
 .ctrl-select,.ctrl-input{border:1px solid #e2e8f0;border-radius:8px;padding:0 12px;height:38px;font-family:inherit;font-size:13px;color:#334155;background:white;outline:none;transition:border-color .15s,box-shadow .15s;width:100%;}
@@ -117,6 +118,63 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
 .bar-op-pos{background:#1e3a8a;border-radius:3px 3px 0 0;}
 .bar-op-neg{background:#dc2626;border-radius:0 0 3px 3px;}
 .q-label{font-size:10px;color:#94a3b8;margin-top:4px;}
+
+/* ===== 모바일 반응형 ===== */
+@media (max-width: 768px) {
+  .page-wrap{padding:12px 14px;}
+
+  /* 헤더 */
+  .topbar{padding:0 14px;}
+  .topbar-inner{height:48px;}
+  .brand-sub{display:none;}
+  .brand-title{font-size:14px;}
+  .badge-ofs{display:none;}
+  .header-select{font-size:11px;height:30px;padding:0 24px 0 8px;}
+
+  /* 필터바: 세로 스택 */
+  .filter-bar{flex-direction:column;gap:10px;padding:14px 16px;}
+  .f-industry,.f-rowcount,.f-search,.f-sort{flex:none;width:100%;}
+  .f-rowcount{flex:none;width:100%;}
+  .filter-actions{margin-left:0!important;width:100%;}
+  .filter-actions .btn-primary,.filter-actions .btn-ghost{flex:1;justify-content:center;}
+
+  /* 스탯카드: 2×2 그리드 */
+  .stat-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat-card{padding:12px 14px;}
+  .stat-value{font-size:18px;}
+  .stat-label{font-size:10px;}
+
+  /* 섹션 헤더 */
+  .section-h2{font-size:15px;}
+  .section-title-row{flex-direction:column;align-items:flex-start;gap:2px;}
+  .section-sub{font-size:11px;}
+
+  /* 테이블: 터치 스크롤 */
+  .table-scroll{-webkit-overflow-scrolling:touch;}
+  .table-footer{flex-direction:column;gap:6px;align-items:flex-start;}
+
+  /* 상세 패널 */
+  .detail-panel{padding:14px;}
+  .detail-panel h3{font-size:14px;margin-bottom:12px;}
+  .kpi-grid{grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+  .kpi-card{padding:10px 12px;}
+  .kpi-val{font-size:16px;}
+  .kpi-title{font-size:10px;}
+  .kpi-delta{font-size:10px;}
+  .panel-grid{grid-template-columns:1fr;gap:12px;}
+  .pl-table td{padding:6px 10px;font-size:11px;}
+
+  /* 분기 차트 */
+  .chart-box{padding:10px 8px;gap:4px;}
+  .q-label{font-size:9px;}
+}
+
+@media (max-width: 400px) {
+  .stat-value{font-size:16px;}
+  .kpi-val{font-size:15px;}
+  .brand-title{font-size:13px;}
+  .filter-bar{padding:12px;}
+}
 </style>
 </head>
 <body>
@@ -144,14 +202,14 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
 
 <div class="page-wrap">
   <div class="filter-bar">
-    <div style="flex:0 0 280px;">
+    <div class="f-industry">
       <label class="filter-label">업종 선택</label>
       <div class="ctrl-wrap">
         <select id="industrySelect" class="ctrl-select"><option value="">업종을 선택하세요...</option><option value="all">🔍 전체 업종 검색</option></select>
         <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
       </div>
     </div>
-    <div style="flex:0 0 100px;">
+    <div class="f-rowcount">
       <label class="filter-label">표시 기업 수</label>
       <div class="ctrl-wrap">
         <select id="rowCount" class="ctrl-select">
@@ -160,14 +218,14 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
         <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
       </div>
     </div>
-    <div style="flex:1 1 200px;">
+    <div class="f-search">
       <label class="filter-label">회사 검색</label>
       <div class="ctrl-wrap">
         <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="companySearch" class="ctrl-input has-icon" type="text" placeholder="회사명 입력"/>
       </div>
     </div>
-    <div style="flex:0 0 180px;">
+    <div class="f-sort">
       <label class="filter-label">정렬</label>
       <div class="ctrl-wrap">
         <select id="sortBy" class="ctrl-select">
@@ -180,7 +238,7 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
         <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
       </div>
     </div>
-    <div class="filter-actions">
+    <div class="filter-actions" style="margin-left:auto;">
       <button class="btn-primary" onclick="apiCache.clear();renderIndustryDashboard();">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
         새로고침
