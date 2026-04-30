@@ -11,8 +11,8 @@ from datetime import datetime, date
 
 DART_API_KEY = os.environ.get('DART_API_KEY', '')
 DART_BASE    = 'https://opendart.fss.or.kr/api'
-CONCURRENT   = 6    # 동시 요청 수
-RATE_PER_SEC = 4    # 초당 최대 요청 수
+CONCURRENT   = 1    # 동시 요청 수
+RATE_PER_SEC = 2    # 초당 최대 요청 수
 
 REPRT_CODE = {
     'Q1': '11013', 'Q2': '11012', 'Q3': '11014',
@@ -88,8 +88,11 @@ class RateLimiter:
 
     async def wait(self):
         now = time.monotonic()
-        if self._until > now:
-            await asyncio.sleep(self._until - now)
+        remaining = self._until - now
+        if remaining > 0:
+            if remaining > 3:
+                print(f'\r  ⏳ 레이트리밋 대기 중... {remaining:.0f}s 남음', end='', flush=True)
+            await asyncio.sleep(remaining)
 
     async def on_rate_limit(self):
         async with self._lock:
@@ -103,6 +106,36 @@ class RateLimiter:
 
     def reset_hits(self):
         self._hits = 0
+
+
+def _fetch_sync(corp_code, year, reprt_code):
+    """순수 동기 requests 방식 (aiohttp TCP 오류 폴백용)"""
+    import requests as req
+    url = f'{DART_BASE}/fnlttSinglAcntAll.json'
+    for fs_div in ['OFS', 'CFS']:
+        params = {'crtfc_key': DART_API_KEY, 'corp_code': corp_code,
+                  'bsns_year': year, 'reprt_code': reprt_code, 'fs_div': fs_div}
+        for attempt in range(3):
+            try:
+                r = req.get(url, params=params, timeout=20)
+                d = r.json()
+                status = d.get('status')
+                if status == '000' and d.get('list'):
+                    return d['list'], fs_div, False
+                elif status == '013':
+                    break
+                elif status == '020':
+                    time.sleep(30)
+                    if attempt == 2:
+                        return [], None, True
+                    continue
+                else:
+                    if attempt < 2:
+                        time.sleep(1)
+            except Exception:
+                if attempt < 2:
+                    time.sleep(2)
+    return [], None, False
 
 
 async def fetch_single_all_async(session, corp_code, year, reprt_code, rl: RateLimiter):
@@ -136,16 +169,22 @@ async def fetch_single_all_async(session, corp_code, year, reprt_code, rl: RateL
                     break  # 이 회사 보고서 없음 (정상)
                 elif status == '020':
                     await rl.on_rate_limit()
-                    # 마지막 시도였으면 rate_limited=True 반환
                     if attempt == 2:
                         return [], None, True
                     continue
                 else:
                     if attempt < 2:
                         await asyncio.sleep(1)
-            except Exception:
+            except Exception as e:
+                err = str(e)
+                # WinError 64 / OSError: aiohttp TCP 연결 실패 → 동기 requests로 즉시 폴백
+                if 'WinError' in err or isinstance(e, OSError):
+                    loop = asyncio.get_event_loop()
+                    return await loop.run_in_executor(
+                        None, _fetch_sync, corp_code, year, reprt_code
+                    )
                 if attempt < 2:
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2 + attempt * 2)
     return [], None, False  # 013 or 진짜 데이터 없음
 
 
@@ -161,14 +200,15 @@ async def fetch_all_async(stock_to_corp, year, reprt_code, checkpoint_path=None)
     sem      = asyncio.Semaphore(CONCURRENT)
     rate_sem = asyncio.Semaphore(RATE_PER_SEC)
     rl       = RateLimiter()
-    connector = aiohttp.TCPConnector(limit=CONCURRENT, ttl_dns_cache=300)
+    # force_close=True: 연결 재사용 안 함 (DART가 TCP를 끊어도 WinError 64 방지)
+    connector = aiohttp.TCPConnector(limit=CONCURRENT, ttl_dns_cache=300, force_close=True)
     timeout   = aiohttp.ClientTimeout(total=30, connect=10)
 
     # 체크포인트: revenue>0 이거나 명시적 nodata인 것만 저장
     companies_result = {}
     retry_later      = {}   # 레이트리밋으로 실패한 종목
     if checkpoint_path and os.path.exists(checkpoint_path):
-        with open(checkpoint_path, encoding='utf-8') as f:
+        with open(checkpoint_path, encoding='utf-8-sig') as f:
             ckpt = json.load(f)
         companies_result = ckpt.get('done', {})
         retry_later      = ckpt.get('retry', {})
@@ -206,16 +246,17 @@ async def fetch_all_async(stock_to_corp, year, reprt_code, checkpoint_path=None)
                 elif fs_used == 'CFS': cfs_count   += 1
                 else:                  empty_count += 1
             done += 1
-            if done % 200 == 0 or done == total:
+            if done % 50 == 0 or done == total:
                 elapsed = time.time() - start_t
                 rate    = done / elapsed if elapsed else 1
-                remain  = (total - done) / rate
+                remain  = (total - done) / rate if rate else 0
                 empty_rate = empty_count / max(done - rl_count, 1) * 100
-                print(f'  [{done+total_all-total}/{total_all}] OFS:{ofs_count} CFS:{cfs_count} 없음:{empty_count}({empty_rate:.0f}%)'
-                      f' | 남은시간 ~{remain:.0f}초')
-                # 체크포인트 저장 (200개마다) - done/retry 모두 저장
+                rl_str = f' RL:{rl_count}' if rl_count else ''
+                print(f'  [{done+total_all-total}/{total_all}] OFS:{ofs_count} CFS:{cfs_count} 없음:{empty_count}({empty_rate:.0f}%){rl_str}'
+                      f' | {elapsed:.0f}s 경과 / 남은 ~{remain:.0f}s')
+                # 체크포인트 저장 (50개마다) - done/retry 모두 저장
                 if checkpoint_path:
-                    with open(checkpoint_path, 'w', encoding='utf-8') as f:
+                    with open(checkpoint_path, 'w', encoding='utf-8', newline='\n') as f:
                         json.dump({'done': companies_result, 'retry': retry_later}, f, ensure_ascii=False)
 
     elapsed_total = time.time() - start_t
