@@ -1,7 +1,7 @@
 /**
  * Cloudflare Pages Function
  * GET /api/stock?codes=003220,003850,...
- * 네이버 금융 integration API 프록시 (주가 + 시총 + PER)
+ * 네이버 금융 프록시 (주가: basic + 시총/PER: integration 병렬)
  */
 export async function onRequestGet(context) {
   const CORS = {
@@ -19,50 +19,46 @@ export async function onRequestGet(context) {
   // 6자리 zero-padding
   const codeList = codes.split(',').map(c => c.trim().padStart(6, '0')).filter(Boolean);
 
-  const headers = {
+  const hdrs = {
     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
     'Referer': 'https://m.stock.naver.com/',
     'Accept': 'application/json',
   };
 
+  const fetchJSON = (url) => fetch(url, { headers: hdrs }).then(r => r.ok ? r.json() : null).catch(() => null);
+
   try {
-    const results = await Promise.allSettled(
-      codeList.map(code =>
-        fetch(`https://m.stock.naver.com/api/stock/${code}/integration`, { headers })
-          .then(r => r.json())
-          .then(d => ({ code, d }))
-      )
+    // 종목별로 basic + integration 병렬 요청
+    const results = await Promise.all(
+      codeList.map(async code => {
+        const [basic, integ] = await Promise.all([
+          fetchJSON(`https://m.stock.naver.com/api/stock/${code}/basic`),
+          fetchJSON(`https://m.stock.naver.com/api/stock/${code}/integration`),
+        ]);
+        return { code, basic, integ };
+      })
     );
 
     const data = {};
-    for (const r of results) {
-      if (r.status !== 'fulfilled') continue;
-      const { code, d } = r.value;
+    for (const { code, basic, integ } of results) {
+      if (!basic && !integ) continue;
 
-      // 현재가 / 등락
-      const price      = parseInt((d.closePrice || '0').replace(/,/g, ''), 10);
-      const change     = parseInt((d.compareToPreviousClosePrice || '0').replace(/,/g, ''), 10);
-      const changeRate = parseFloat(d.fluctuationsRatio || 0);
+      // ── 현재가 (basic) ──
+      const price      = parseInt((basic?.closePrice || '0').replace(/,/g, ''), 10);
+      const change     = parseInt((basic?.compareToPreviousClosePrice || '0').replace(/,/g, ''), 10);
+      const changeRate = parseFloat(basic?.fluctuationsRatio || 0);
 
-      // totalInfos에서 시총 / PER 추출
-      const infos = d.totalInfos || [];
-      const getInfo = (code) => infos.find(i => i.code === code)?.value || '';
+      // ── 시총 / PER (integration → totalInfos) ──
+      const infos = integ?.totalInfos || [];
+      const getInfo = key => infos.find(i => i.code === key)?.value || '';
 
-      const marketValueRaw = getInfo('marketValue'); // e.g. "2,288억"
-      // PER: 실적PER 우선, N/A면 추정PER 사용
-      const perRaw   = getInfo('per');    // e.g. "15.04배" or "N/A"
-      const cnsPerRaw = getInfo('cnsPer'); // e.g. "15.04배"
-      const perStr = (perRaw && perRaw !== 'N/A') ? perRaw : cnsPerRaw;
-      const per = perStr ? parseFloat(perStr.replace(/[^0-9.]/g, '')) : 0;
+      const marketValue = getInfo('marketValue');          // "2,288억"
+      const perRaw      = getInfo('per');                  // "15.04배" or "N/A"
+      const cnsPerRaw   = getInfo('cnsPer');               // 추정PER
+      const perStr      = (perRaw && perRaw !== 'N/A') ? perRaw : cnsPerRaw;
+      const per         = perStr ? parseFloat(perStr.replace(/[^0-9.]/g, '')) : 0;
 
-      data[code] = {
-        price,
-        change,
-        changeRate,
-        marketValue: marketValueRaw,   // 이미 포맷된 문자열 (예: "2,288억")
-        per,
-        perLabel: perStr ? perStr : '—',
-      };
+      data[code] = { price, change, changeRate, marketValue, per };
     }
 
     return new Response(JSON.stringify({ ok: true, data }), { headers: CORS });
