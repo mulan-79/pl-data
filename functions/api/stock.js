@@ -1,7 +1,7 @@
 /**
  * Cloudflare Pages Function
  * GET /api/stock?codes=003220,003850,...
- * 네이버 금융 실시간 주가 프록시
+ * 네이버 모바일 주식 API 프록시 (주가 + 시총 + PER)
  */
 export async function onRequestGet(context) {
   const CORS = {
@@ -14,46 +14,43 @@ export async function onRequestGet(context) {
   const codes = url.searchParams.get('codes') || '';
 
   if (!codes) {
-    return new Response(JSON.stringify({ error: 'codes 파라미터 필요 (예: ?codes=003220,003850)' }), {
-      status: 400, headers: CORS,
-    });
+    return new Response(JSON.stringify({ error: 'codes 파라미터 필요' }), { status: 400, headers: CORS });
   }
 
+  const codeList = codes.split(',').map(c => c.trim()).filter(Boolean);
+
   try {
-    // 네이버 금융 실시간 polling API (다중 종목)
-    const naverUrl = `https://polling.finance.naver.com/api/realtime/domestic/stock?codes=${codes}`;
-    const res = await fetch(naverUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://finance.naver.com/',
-        'Accept': 'application/json, text/plain, */*',
-      },
-    });
+    // 네이버 모바일 basic API - 종목별 병렬 요청
+    const results = await Promise.allSettled(
+      codeList.map(code =>
+        fetch(`https://m.stock.naver.com/api/stock/${code}/basic`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
+            'Referer': 'https://m.stock.naver.com/',
+            'Accept': 'application/json',
+          },
+        }).then(r => r.json()).then(d => ({ code, d }))
+      )
+    );
 
-    if (!res.ok) throw new Error(`네이버 API 오류: ${res.status}`);
+    const data = {};
+    for (const r of results) {
+      if (r.status !== 'fulfilled') continue;
+      const { code, d } = r.value;
 
-    const raw = await res.json();
+      const price      = parseInt(d.closePrice?.replace(/,/g, '') || 0, 10);
+      const change     = parseInt(d.compareToPreviousClosePrice?.replace(/,/g, '') || 0, 10);
+      const changeRate = parseFloat(d.fluctuationsRatio || 0);
+      const marketCap  = parseInt(d.marketValue?.replace(/,/g, '') || 0, 10);   // 원 단위
+      const per        = parseFloat(d.per || 0);
 
-    // 응답 정규화: { stockCode: { price, change, changeRate, marketStatus } }
-    const result = {};
-    const stocks = raw?.result?.stocks || raw?.stocks || raw || {};
-
-    for (const [code, info] of Object.entries(stocks)) {
-      const s = info?.dealTrendInfoDto || info?.stockDto || info || {};
-      result[code] = {
-        price:       parseInt(s.closePrice        || s.currentPrice || s.nv  || 0, 10),
-        change:      parseInt(s.compareToPreviousClosePrice || s.cv || 0, 10),
-        changeRate:  parseFloat(s.fluctuationsRatio || s.cr || 0),
-        status:      s.marketStatus || s.marketCondition || '',
-      };
+      data[code] = { price, change, changeRate, marketCap, per };
     }
 
-    return new Response(JSON.stringify({ ok: true, data: result }), { headers: CORS });
+    return new Response(JSON.stringify({ ok: true, data }), { headers: CORS });
 
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: e.message }), {
-      status: 500, headers: CORS,
-    });
+    return new Response(JSON.stringify({ ok: false, error: e.message }), { status: 500, headers: CORS });
   }
 }
 
