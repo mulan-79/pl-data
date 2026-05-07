@@ -538,8 +538,10 @@ async function fetchStockPrices(metrics){
 
 function applyStockPrices(data){
   for(const [code, info] of Object.entries(data)){
+    // 6자리 패딩 코드 → leading zero 제거해서 HTML ID와 맞춤
+    const rawCode = String(parseInt(code, 10));
     // 주가 + 등락률
-    const spEl = document.getElementById('sp-'+code);
+    const spEl = document.getElementById('sp-'+rawCode);
     if(spEl && info.price){
       const cr = info.changeRate || 0;
       const sign = cr > 0 ? '+' : '';
@@ -551,13 +553,13 @@ function applyStockPrices(data){
         +'</div>';
     }
     // 시총 (이미 포맷된 문자열: "2,288억")
-    const mcEl = document.getElementById('mc-'+code);
+    const mcEl = document.getElementById('mc-'+rawCode);
     if(mcEl){
       mcEl.textContent = info.marketValue || '—';
       mcEl.style.color = '#334155';
     }
     // PER
-    const perEl = document.getElementById('per-'+code);
+    const perEl = document.getElementById('per-'+rawCode);
     if(perEl){
       perEl.textContent = info.per > 0 ? info.per.toFixed(1)+'x' : '—';
       perEl.style.color = '#334155';
