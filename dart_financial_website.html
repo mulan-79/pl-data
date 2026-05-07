@@ -536,18 +536,9 @@ async function fetchStockPrices(metrics){
   }catch(e){ console.warn('주가 조회 실패:', e.message); }
 }
 
-function fmtMarketCap(won){
-  if(!won) return '—';
-  const jo = won / 1e12;
-  if(jo >= 1) return jo.toFixed(1)+'조';
-  const eok = won / 1e8;
-  if(eok >= 1) return Math.round(eok).toLocaleString('ko-KR')+'억';
-  return '—';
-}
-
 function applyStockPrices(data){
   for(const [code, info] of Object.entries(data)){
-    // 주가
+    // 주가 + 등락률
     const spEl = document.getElementById('sp-'+code);
     if(spEl && info.price){
       const cr = info.changeRate || 0;
@@ -559,10 +550,10 @@ function applyStockPrices(data){
         +'<span style="font-size:10px;font-weight:600;color:'+col+';">'+sign+cr.toFixed(2)+'%</span>'
         +'</div>';
     }
-    // 시총
+    // 시총 (이미 포맷된 문자열: "2,288억")
     const mcEl = document.getElementById('mc-'+code);
     if(mcEl){
-      mcEl.textContent = fmtMarketCap(info.marketCap);
+      mcEl.textContent = info.marketValue || '—';
       mcEl.style.color = '#334155';
     }
     // PER
