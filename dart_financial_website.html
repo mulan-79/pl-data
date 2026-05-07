@@ -518,21 +518,35 @@ async function fetchStockPrices(metrics){
   const codes = metrics.map(m=>m.stockCode).filter(Boolean);
   if(!codes.length) return;
 
-  // 1분 캐시
   const now = Date.now();
-  if(now - stockPriceCache.ts < 60000 && Object.keys(stockPriceCache.data).length){
-    applyStockPrices(stockPriceCache.data);
+  const cached = stockPriceCache.data;
+
+  // 현재 표시 코드 중 캐시에 없는 것 확인
+  const missingCodes = codes.filter(c => {
+    const raw = String(parseInt(String(c).padStart(6,'0'), 10));
+    return !cached[c] && !cached[raw] && !cached[String(c).padStart(6,'0')];
+  });
+
+  // 1분 이내 캐시 + 누락 없음 → 캐시 재사용
+  if(now - stockPriceCache.ts < 60000 && Object.keys(cached).length && missingCodes.length === 0){
+    applyStockPrices(cached);
     return;
   }
 
+  // 누락된 코드만 or 전체 새로 요청
+  const fetchCodes = missingCodes.length > 0 && missingCodes.length < codes.length
+    ? missingCodes   // 일부 누락 → 누락분만 요청
+    : codes;         // 전체 만료 → 전체 요청
+
   try{
-    const res = await fetch('/api/stock?codes='+codes.join(','));
+    const res = await fetch('/api/stock?codes='+fetchCodes.join(','));
     if(!res.ok) return;
     const json = await res.json();
     if(!json.ok || !json.data) return;
-    stockPriceCache.data = json.data;
+    // 기존 캐시에 병합
+    Object.assign(stockPriceCache.data, json.data);
     stockPriceCache.ts = now;
-    applyStockPrices(json.data);
+    applyStockPrices(stockPriceCache.data);
   }catch(e){ console.warn('주가 조회 실패:', e.message); }
 }
 
