@@ -391,9 +391,12 @@ async function renderIndustryDashboard(){
     updateStatCards([],null); return;
   }
 
+  // 검색어 있으면 전체 업종에서 검색 (업종 선택 무관)
+  const effectiveIc = cs ? 'all' : ic;
+
   // 전체 업종 모드: 모든 기업 합산 (중복 제거)
   let ind=null, allCo=[];
-  if(ic==='all'){
+  if(effectiveIc==='all'){
     const seen=new Set();
     Object.values(INDUSTRY_DATA.companies).forEach(companies=>{
       companies.forEach(c=>{ if(!seen.has(c.stock_code)){seen.add(c.stock_code);allCo.push(c);} });
@@ -408,7 +411,7 @@ async function renderIndustryDashboard(){
 
   if(selectedCompanyCode&&!allCo.some(c=>c.stock_code===selectedCompanyCode)) selectedCompanyCode='';
 
-  const ck=ic+'-'+year+'-'+quarter;
+  const ck=effectiveIc+'-'+year+'-'+quarter;
   if(!apiCache.has(ck)){
     document.getElementById('tableBody').innerHTML='<tr><td colspan="18" style="text-align:center;padding:60px;color:#94a3b8;"><div style="font-size:28px;margin-bottom:10px;">⏳</div><div style="font-size:14px;font-weight:600;color:#475569;">데이터 불러오는 중...</div><div style="font-size:12px;margin-top:6px;">'+(ind?ind.name:'')+' · '+getPeriodLabel()+'</div></td></tr>';
     try{
