@@ -24,19 +24,15 @@ kospi  = sum(1 for v in industry_data['companies'].values() for c in v if c.get(
 kosdaq = sum(1 for v in industry_data['companies'].values() for c in v if c.get('market')=='KOSDAQ')
 print(f'INDUSTRY_DATA: {len(new_line)//1024}KB | 전체:{total}개 KOSPI:{kospi} KOSDAQ:{kosdaq}')
 
-# 기존 HTML에서 const INDUSTRY_DATA = ...줄만 교체 (한 줄 전체)
+# 기존 HTML에서 const INDUSTRY_DATA = ...줄만 교체 (정규식으로 안전하게)
 with open(src, encoding='utf-8') as f:
     html = f.read()
 
-idx_start = html.find('const INDUSTRY_DATA =')
-if idx_start == -1:
+# ^const INDUSTRY_DATA = .*$ : 해당 줄 전체를 new_line으로 교체
+new_html, n = re.subn(r'^const INDUSTRY_DATA = .*$', new_line, html, flags=re.MULTILINE)
+if n == 0:
     raise RuntimeError('HTML에서 INDUSTRY_DATA를 찾을 수 없습니다.')
-idx_end = html.find(';\n', idx_start)
-if idx_end == -1:
-    raise RuntimeError('INDUSTRY_DATA 끝(;\\n)을 찾을 수 없습니다.')
-idx_end += 2  # ';\n' 포함
-
-html = html[:idx_start] + new_line + '\n' + html[idx_end:]
+html = new_html
 
 with open(src, 'w', encoding='utf-8') as f:
     f.write(html)
