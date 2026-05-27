@@ -554,7 +554,7 @@ function applyStockPrices(data){
     if(spEl && info.price){
       const cr = info.changeRate || 0;
       const sign = cr > 0 ? '+' : '';
-      const col = cr > 0 ? '#047857' : cr < 0 ? '#dc2626' : '#64748b';
+      const col = cr > 0 ? '#dc2626' : cr < 0 ? '#1d4ed8' : '#64748b'; // 주가: 상승=빨강, 하락=파랑 (한국 증시 관례)
       spEl.innerHTML =
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;">'
         +'<span style="font-weight:700;color:#1e293b;font-size:12px;">'+info.price.toLocaleString('ko-KR')+'</span>'
