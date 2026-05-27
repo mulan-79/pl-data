@@ -58,7 +58,7 @@ def extract_metrics(stock_code, corp_code, rows):
     sga    = get(['판매비와관리비', '판매비및관리비', '판매관리비', '판매비및일반관리비'])
     op     = get(['영업이익(손실)', '영업이익'])
     pretax = get(['법인세비용차감전순이익(손실)', '법인세차감전순이익', '법인세차감전당기순이익'])
-    net    = get(['당기순이익(손실)', '당기순이익'])
+    net    = get(['당기순이익(손실)', '당기순이익', '분기순이익(손실)', '분기순이익', '반기순이익(손실)', '반기순이익'])
 
     r, pr = rev['current'], rev['prev']
     growth = round((r - pr) / abs(pr) * 100, 2) if pr else 0
