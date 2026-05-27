@@ -43,6 +43,10 @@ def extract_metrics(stock_code, corp_code, rows):
                     matched.append(row)
             if not matched:
                 continue
+            # 정확히 일치하는 계정 우선 (예: '영업수익' vs '기타의영업수익' 구분)
+            exact = [r for r in matched if r.get('account_nm', '').replace(' ', '') == kw]
+            if exact:
+                matched = exact
             # DART 분기보고서는 동일 계정에 '3개월'(개별분기)과 누계행이 같이 올 수 있음
             # → 'thstrm_nm'에 '3개월'이 없는 행(누계) 우선 선택
             ytd = [r for r in matched if '3개월' not in (r.get('thstrm_nm') or '')]
