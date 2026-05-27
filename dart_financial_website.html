@@ -227,6 +227,10 @@ body{font-family:'Noto Sans KR','Apple SD Gothic Neo',sans-serif;background:#f8f
         </div>
       </div>
       <div id="themeSelectWrap" style="display:none;">
+        <div class="ctrl-wrap" style="margin-bottom:4px;">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input id="themeSearch" class="ctrl-input has-icon" type="text" placeholder="테마 검색..." oninput="filterThemes(this.value)" autocomplete="off"/>
+        </div>
         <div class="ctrl-wrap">
           <select id="themeSelect" class="ctrl-select"><option value="">테마를 선택하세요...</option><option value="all">🔍 전체 테마 검색</option></select>
           <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
@@ -402,12 +406,39 @@ function initializeThemes(){
   THEME_DATA.themes.forEach(t=>{const o=document.createElement('option');o.value=t.code;o.textContent=t.name;s.appendChild(o);});
 }
 
+function filterThemes(q){
+  const s=document.getElementById('themeSelect');
+  const kw=q.trim().toLowerCase();
+  let first='';
+  Array.from(s.options).forEach(o=>{
+    if(o.value===''||o.value==='all'){ o.style.display=''; return; }
+    const match = !kw || o.textContent.toLowerCase().includes(kw);
+    o.style.display = match ? '' : 'none';
+    if(match && !first) first=o.value;
+  });
+  // 검색어 있고 현재 선택값이 숨겨진 경우 → 첫 번째 매칭으로 이동
+  const cur=s.value;
+  const curOpt=Array.from(s.options).find(o=>o.value===cur);
+  if(kw && cur && curOpt && curOpt.style.display==='none'){
+    s.value=first||''; renderIndustryDashboard();
+  }
+  // select 높이를 매칭 수에 맞게 조정 (최소 4, 최대 10)
+  const visible=Array.from(s.options).filter(o=>o.style.display!=='none').length;
+  s.size = kw ? Math.min(Math.max(visible,2),10) : 0;
+  s.style.height = kw ? 'auto' : '';
+}
+
 function switchMode(mode){
   currentMode=mode;
   document.getElementById('tabIndustry').classList.toggle('active', mode==='industry');
   document.getElementById('tabTheme').classList.toggle('active', mode==='theme');
   document.getElementById('industrySelectWrap').style.display = mode==='industry' ? '' : 'none';
   document.getElementById('themeSelectWrap').style.display    = mode==='theme'    ? '' : 'none';
+  if(mode==='theme'){
+    // 테마로 전환 시 검색창 초기화
+    const ts=document.getElementById('themeSearch'); if(ts) ts.value='';
+    filterThemes('');
+  }
   selectedCompanyCode=''; currentMetrics=[]; apiCache.clear();
   renderIndustryDashboard();
 }
