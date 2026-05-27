@@ -123,25 +123,26 @@ def main():
 
     print(f'  DART→우리코드 매핑 완성: {len(dart_to_ours)}개 항목')
 
-    # ── Step 3: FDR로 KOSDAQ 목록 수집 ───────────────
-    print('\n[Step 3] FDR로 KOSDAQ 종목 목록 수집...')
-    kosdaq_df = fdr.StockListing('KOSDAQ')
-    code_col  = next((c for c in kosdaq_df.columns
-                      if c.lower() in ('code', 'symbol', '종목코드')), None)
-    name_col  = next((c for c in kosdaq_df.columns
-                      if c.lower() in ('name', '종목명', '회사명')), None)
-    print(f'  KOSDAQ {len(kosdaq_df)}개')
-
+    # ── Step 3: FDR로 KOSPI + KOSDAQ 목록 수집 ──────────
+    print('\n[Step 3] FDR로 KOSPI + KOSDAQ 종목 목록 수집...')
     candidates = []
-    for _, row in kosdaq_df.iterrows():
-        sc_raw = str(row[code_col]).strip().zfill(6)
-        sc     = sc_raw.lstrip('0') or sc_raw
-        if sc not in existing_sc and sc_raw not in existing_sc:
-            candidates.append({
-                'sc':     sc,
-                'sc_raw': sc_raw,
-                'name':   str(row[name_col]).strip() if name_col else sc,
-            })
+    for market in ('KOSPI', 'KOSDAQ'):
+        df = fdr.StockListing(market)
+        code_col = next((c for c in df.columns
+                         if c.lower() in ('code', 'symbol', '종목코드')), None)
+        name_col = next((c for c in df.columns
+                         if c.lower() in ('name', '종목명', '회사명')), None)
+        print(f'  {market} {len(df)}개')
+        for _, row in df.iterrows():
+            sc_raw = str(row[code_col]).strip().zfill(6)
+            sc     = sc_raw.lstrip('0') or sc_raw
+            if sc not in existing_sc and sc_raw not in existing_sc:
+                candidates.append({
+                    'sc':     sc,
+                    'sc_raw': sc_raw,
+                    'name':   str(row[name_col]).strip() if name_col else sc,
+                    'market': market,
+                })
     print(f'  신규 후보: {len(candidates)}개 (약 {round(len(candidates)*0.3/60,1)}분 예상)')
 
     # ── Step 4: KOSDAQ 기업별 DART 조회 + 매핑 ──────────
@@ -203,7 +204,7 @@ def main():
             'name':          corp_name,
             'industry_code': our_code,
             'industry_name': ind_nm,
-            'market':        'KOSDAQ',
+            'market':        c.get('market', 'KOSDAQ'),
         })
         added += 1
 
