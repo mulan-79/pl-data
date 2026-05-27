@@ -1,0 +1,8 @@
+feat: 테마별 보기 기능 추가 (네이버 증권 265개 테마)
+
+- scripts/build_theme_data.py: 네이버 증권 테마 전체 수집 스크립트
+- theme_data.json: 265개 테마, 6547건 종목 매핑 데이터
+- HTML: THEME_DATA 주입 + 업종/테마 탭 전환 UI
+- build_html.py: THEME_DATA 자동 주입 지원
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
