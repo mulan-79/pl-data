@@ -35,8 +35,18 @@ def recalc_rates(co):
 def get_co(companies, sc):
     return companies.get(sc) or companies.get(sc.zfill(6)) or companies.get(sc.lstrip('0'))
 
+import os, re
+
+# data 폴더에서 연도 자동 감지
+_years_in_data = sorted(set(
+    m.group(1)
+    for f in os.listdir(data_dir)
+    for m in [re.match(r'financial_(\d{4})_(Q1|Q2|Q3|annual)\.json', f)]
+    if m
+), reverse=True)  # 예: ['2026', '2025', '2024']
+
 # ── 1단계: 각 연도별 누계 합산 ──────────────────────────
-for year in ['2025', '2024']:
+for year in _years_in_data:
     q1 = load(year, 'Q1')
     q2 = load(year, 'Q2')
     q3 = load(year, 'Q3')
@@ -67,23 +77,25 @@ for year in ['2025', '2024']:
         save(q3, year, 'Q3')
         print(f'[{year} Q3] {cnt}개 → Q1+Q2+Q3 누계 저장')
 
-# ── 2단계: 2025 prev* → 2024 누계값으로 업데이트 ────────
-print('\n--- 2025 prev* 필드 → 2024 누계 기준 ---')
+# ── 2단계: 각 연도 prev* → 전년도 누계값으로 업데이트 ────────
 PREV_MAP = {'prevRevenue':'revenue','prevCogs':'cogs','prevSga':'sga',
             'prevOpIncome':'opIncome','prevPretaxIncome':'pretaxIncome','prevNetIncome':'netIncome'}
 
-for q in ['Q1','Q2','Q3']:
-    d24 = load('2024', q)
-    d25 = load('2025', q)
-    if not d24 or not d25: print(f'[SKIP] {q}'); continue
-    cnt = 0
-    for sc, co in d25['companies'].items():
-        p = get_co(d24['companies'], sc)
-        if not p: continue
-        for pf, sf in PREV_MAP.items():
-            co[pf] = p.get(sf, 0)
-        recalc_rates(co); cnt += 1
-    save(d25, '2025', q)
-    print(f'[2025 {q}] {cnt}개 prev* 업데이트')
+for year in _years_in_data:
+    prev_year = str(int(year) - 1)
+    print(f'\n--- {year} prev* 필드 → {prev_year} 누계 기준 ---')
+    for q in ['Q1','Q2','Q3']:
+        d_prev = load(prev_year, q)
+        d_curr = load(year, q)
+        if not d_prev or not d_curr: print(f'[SKIP] {year} {q}'); continue
+        cnt = 0
+        for sc, co in d_curr['companies'].items():
+            p = get_co(d_prev['companies'], sc)
+            if not p: continue
+            for pf, sf in PREV_MAP.items():
+                co[pf] = p.get(sf, 0)
+            recalc_rates(co); cnt += 1
+        save(d_curr, year, q)
+        print(f'[{year} {q}] {cnt}개 prev* 업데이트')
 
 print('\n✓ 완료!')
