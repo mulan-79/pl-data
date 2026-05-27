@@ -1,7 +1,14 @@
 {
-  "updated_at": "2026-04-30",
-  "latest": "2025_annual",
+  "updated_at": "2026-05-27",
+  "latest": "2026_Q1",
   "periods": [
+    {
+      "key": "2026_Q1",
+      "year": "2026",
+      "quarter": "Q1",
+      "label": "2026년 1분기",
+      "prevLabel": "2025년 1분기 대비"
+    },
     {
       "key": "2025_annual",
       "year": "2025",
