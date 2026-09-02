@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """
-개별 분기값 → 누계값으로 합산 변환 (재수집 없이)
+개별 분기값 → 누계값으로 합산 변환
   Q1 누계 = Q1
   Q2 누계 = Q1 + Q2
   Q3 누계 = Q1 + Q2 + Q3
-2025 prev* 필드도 2024 누계 기준으로 업데이트
+
+사용법:
+  python accumulate_quarters.py 2026        # 2026년만 처리 (권장: 새 분기 추가 후)
+  python accumulate_quarters.py 2026 2025   # 여러 연도 지정
+  python accumulate_quarters.py             # 전체 연도 (주의: 이미 누계된 파일에 재실행 금지)
 """
-import json, os
+import json, os, re, sys
 
 base     = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 data_dir = os.path.join(base, 'data')
 
-# 합산할 손익 필드
 SUM_FIELDS = ['revenue','cogs','sga','opIncome','pretaxIncome','netIncome']
+PREV_MAP   = {'prevRevenue':'revenue','prevCogs':'cogs','prevSga':'sga',
+              'prevOpIncome':'opIncome','prevPretaxIncome':'pretaxIncome','prevNetIncome':'netIncome'}
 
 def load(year, q):
     p = os.path.join(data_dir, f'financial_{year}_{q}.json')
@@ -35,25 +40,27 @@ def recalc_rates(co):
 def get_co(companies, sc):
     return companies.get(sc) or companies.get(sc.zfill(6)) or companies.get(sc.lstrip('0'))
 
-import os, re
-
-# data 폴더에서 연도 자동 감지
-_years_in_data = sorted(set(
-    m.group(1)
-    for f in os.listdir(data_dir)
-    for m in [re.match(r'financial_(\d{4})_(Q1|Q2|Q3|annual)\.json', f)]
-    if m
-), reverse=True)  # 예: ['2026', '2025', '2024']
+# 처리할 연도 결정: 인수 있으면 지정 연도만, 없으면 전체
+if len(sys.argv) > 1:
+    years = sorted(sys.argv[1:], reverse=True)
+    print(f'지정 연도만 처리: {years}')
+else:
+    years = sorted(set(
+        m.group(1)
+        for f in os.listdir(data_dir)
+        for m in [re.match(r'financial_(\d{4})_(Q1|Q2|Q3|annual)\.json', f)]
+        if m
+    ), reverse=True)
+    print(f'전체 연도 처리: {years}')
 
 # ── 1단계: 각 연도별 누계 합산 ──────────────────────────
-for year in _years_in_data:
+for year in years:
     q1 = load(year, 'Q1')
     q2 = load(year, 'Q2')
     q3 = load(year, 'Q3')
     if not q1:
         print(f'[SKIP] {year} Q1 파일 없음'); continue
 
-    # Q2 누계 = Q1 + Q2
     if q2:
         cnt = 0
         for sc, co in q2['companies'].items():
@@ -65,11 +72,10 @@ for year in _years_in_data:
         save(q2, year, 'Q2')
         print(f'[{year} Q2] {cnt}개 → Q1+Q2 누계 저장')
 
-    # Q3 누계 = (Q1+Q2 누계) + Q3
     if q3 and q2:
         cnt = 0
         for sc, co in q3['companies'].items():
-            c2 = get_co(q2['companies'], sc)   # 이미 Q1+Q2 누계
+            c2 = get_co(q2['companies'], sc)
             if not c2: continue
             for f in SUM_FIELDS:
                 co[f] = co.get(f,0) + c2.get(f,0)
@@ -78,10 +84,7 @@ for year in _years_in_data:
         print(f'[{year} Q3] {cnt}개 → Q1+Q2+Q3 누계 저장')
 
 # ── 2단계: 각 연도 prev* → 전년도 누계값으로 업데이트 ────────
-PREV_MAP = {'prevRevenue':'revenue','prevCogs':'cogs','prevSga':'sga',
-            'prevOpIncome':'opIncome','prevPretaxIncome':'pretaxIncome','prevNetIncome':'netIncome'}
-
-for year in _years_in_data:
+for year in years:
     prev_year = str(int(year) - 1)
     print(f'\n--- {year} prev* 필드 → {prev_year} 누계 기준 ---')
     for q in ['Q1','Q2','Q3']:
@@ -98,4 +101,4 @@ for year in _years_in_data:
         save(d_curr, year, q)
         print(f'[{year} {q}] {cnt}개 prev* 업데이트')
 
-print('\n✓ 완료!')
+print('\n완료!')
