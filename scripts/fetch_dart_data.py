@@ -34,7 +34,7 @@ def parse_num(s):
 def extract_metrics(stock_code, corp_code, rows):
     is_rows = [r for r in rows if r.get('sj_div') in ('IS', 'CIS')]
 
-    def get(keywords):
+    def get(keywords, exact_only=()):
         for kw in keywords:
             matched = []
             for row in is_rows:
@@ -47,17 +47,30 @@ def extract_metrics(stock_code, corp_code, rows):
             exact = [r for r in matched if r.get('account_nm', '').replace(' ', '') == kw]
             if exact:
                 matched = exact
+            elif kw in exact_only:
+                # '수익'처럼 흔한 단어는 부분일치를 허용하면 '금융수익' 등을 잘못 집음
+                continue
             # DART 분기보고서는 동일 계정에 '3개월'(개별분기)과 누계행이 같이 올 수 있음
             # → 'thstrm_nm'에 '3개월'이 없는 행(누계) 우선 선택
             ytd = [r for r in matched if '3개월' not in (r.get('thstrm_nm') or '')]
             row = ytd[0] if ytd else matched[0]
+            # 반기/분기보고서는 *_amount = 해당 3개월, *_add_amount = 누계.
+            # 연간보고서는 add_amount가 없으므로 amount로 폴백.
+            # 전기(前期)는 반기/분기에서 frmtrm_amount 대신 frmtrm_q_amount(3개월)만 오므로
+            # frmtrm_add_amount(전기 누계)를 최우선으로 사용.
+            def pick(*keys):
+                for k in keys:
+                    if row.get(k) not in (None, '', '-'):
+                        return parse_num(row.get(k))
+                return 0
             return {
-                'current': parse_num(row.get('thstrm_amount')),
-                'prev':    parse_num(row.get('frmtrm_amount')),
+                'current': pick('thstrm_add_amount', 'thstrm_amount'),
+                'prev':    pick('frmtrm_add_amount', 'frmtrm_amount', 'frmtrm_q_amount'),
             }
         return {'current': 0, 'prev': 0}
 
-    rev    = get(['매출액', '수익(매출액)', '영업수익'])
+    rev    = get(['매출액', '수익(매출액)', '영업수익', '수익', '매출'],
+                 exact_only=('수익', '매출'))
     cogs   = get(['매출원가'])
     sga    = get(['판매비와관리비', '판매비및관리비', '판매관리비', '판매비및일반관리비'])
     op     = get(['영업이익(손실)', '영업이익'])
