@@ -765,7 +765,7 @@ function csvDownload(){
 }
 
 function resetFilters(){
-  document.getElementById('industrySelect').value='32100';
+  document.getElementById('industrySelect').value='';
   document.getElementById('rowCount').value='20';
   document.getElementById('companySearch').value='';
   document.getElementById('sortBy').value='revenue-desc';
@@ -784,7 +784,7 @@ document.addEventListener('DOMContentLoaded', async function(){
   }
   initializeIndustries();
   initializeThemes();
-  document.getElementById('industrySelect').value='32100';
+  document.getElementById('industrySelect').value='';
   ['industrySelect','themeSelect','rowCount','sortBy'].forEach(id=>document.getElementById(id).addEventListener('change',renderIndustryDashboard));
   document.getElementById('companySearch').addEventListener('input',renderIndustryDashboard);
   document.getElementById('periodSelect').addEventListener('change',()=>{currentMetrics=[];apiCache.clear();renderIndustryDashboard();});
