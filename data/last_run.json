@@ -1,5 +1,5 @@
 {
-  "run_at": "2026-11-23 05:55:05",
+  "run_at": "2026-11-23 06:23:15",
   "mode": "전 종목",
   "periods": [
     {
@@ -25,7 +25,7 @@
     {
       "period": "2026_Q1",
       "action": "fetched",
-      "requested": 169,
+      "requested": 152,
       "rateLimitedMissed": 0,
       "balanceFail": 0,
       "gpFail": 0,
@@ -36,7 +36,7 @@
     {
       "period": "2026_Q2",
       "action": "fetched",
-      "requested": 161,
+      "requested": 140,
       "rateLimitedMissed": 0,
       "balanceFail": 0,
       "gpFail": 0,
