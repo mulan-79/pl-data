@@ -158,6 +158,18 @@ def extract_all(stock_code, corp_code, rows, quarter, fs_div):
         amounts[k] = income_slots(row, quarter) if row else [None] * 4
         if k == 'revenue' and row and quarter in ('Q2', 'Q3') and amounts[k][1] is None:
             flags.append('noAdd')   # 누적 칸이 없는 보고서
+    # 비용을 음수로 신고하는 회사(대웅제약 등): 매출 + 매출원가 = 매출총이익이면 부호를 뒤집어 양수로 저장
+    rev_s, cg_s, gp_s = amounts['revenue'], amounts['cogs'], amounts['grossProfit']
+    fixed = False
+    for i in range(4):
+        c = cg_s[i]
+        if c is not None and c < 0:
+            if gp_s[i] is not None and rev_s[i] is not None and rev_s[i] + c != gp_s[i]:
+                continue
+            cg_s[i] = -c
+            fixed = True
+    if fixed:
+        flags.append('cogsSignFixed')
     if all(v is None for v in amounts['grossProfit']):
         gp = _sub(amounts['revenue'], amounts['cogs'])
         if any(v is not None for v in gp):
@@ -423,6 +435,22 @@ def write_verify(year, quarter, companies, names, target_codes):
     if quarter in ('Q2', 'Q3'):
         section('6. 누적 칸이 없는 반기·분기 보고서(누적 값 null)', noadd, ok='없음')
 
+    # 3개월 값 ≟ (누적 − 앞 분기 누적). 앞 분기도 새 형식인 회사만 비교. 공시 정정·DART 자료 오류 발견용.
+    prevq = {'Q2': 'Q1', 'Q3': 'Q2'}.get(quarter)
+    if prevq:
+        pp = os.path.join(BASE_DIR, 'data', f'financial_{year}_{prevq}.json')
+        prev = json.load(open(pp, encoding='utf-8'))['companies'] if os.path.exists(pp) else {}
+        qmis = []
+        for sc, r in sorted(full.items()):
+            pa = (prev.get(sc) or {}).get('amounts')
+            if not pa:
+                continue
+            for k, lab in (('revenue', '매출'), ('opIncome', '영업이익'), ('netIncome', '순이익')):
+                q, y, py = r['amounts'][k][0], r['amounts'][k][1], pa[k][1]
+                if None not in (q, y, py) and y - py != q:
+                    qmis.append(f'{nm(sc)}({sc.zfill(6)}) {lab}: 3개월 {q:,} ≠ 누적−앞분기 누적 {y-py:,} (차 {q-(y-py):,}) · 접수 {r.get("rceptNo")}')
+        section('8. 3개월 값 ≠ (누적 − 앞 분기 누적) — 공시 정정 또는 DART 자료 오류 가능', qmis)
+
     if year == '2026' and quarter == 'Q3':
         r = companies.get('3220') or companies.get('003220')
         L.append('## 7. 대원제약(003220) 2026 Q3 별도 누적 기준값 대조')
@@ -533,6 +561,10 @@ def main():
     for t in tg['targets']:
         names[t['code']] = t['name']
 
+    only = [a.split('=', 1)[1] for a in sys.argv[1:] if a.startswith('--codes=')]
+    if only:   # 예: --codes=069620,260660 --force  (해당 종목만 다시 받아 기존 파일에 병합)
+        want = {c.zfill(6) for c in only[0].split(',') if c}
+        stock_to_corp = {sc: cc for sc, cc in stock_to_corp.items() if sc.zfill(6) in want}
     if targets_only:
         stock_to_corp = {sc: cc for sc, cc in stock_to_corp.items() if sc.zfill(6) in target_codes}
         missing = target_codes - {sc.zfill(6) for sc in stock_to_corp}
@@ -594,6 +626,9 @@ def main():
     with open(os.path.join(data_dir, 'last_run.json'), 'w', encoding='utf-8') as f:
         json.dump({'run_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'mode': mode,
                    'periods': run_log}, f, ensure_ascii=False, indent=2)
+    sys.path.insert(0, HERE)
+    import export_dart_all
+    export_dart_all.main()   # 수집이 끝날 때마다 export/dart_all.json 자동 재생성
     print('\n완료!')
 
 

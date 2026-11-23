@@ -1,28 +1,17 @@
 {
-  "run_at": "2026-11-23 14:28:20",
-  "mode": "65곳만 병합",
+  "run_at": "2026-11-23 14:44:55",
+  "mode": "전 종목",
   "periods": [
     {
-      "period": "2026_Q1",
+      "period": "2026_Q3",
       "action": "fetched",
-      "requested": 65,
+      "requested": 5,
       "rateLimitedMissed": 0,
-      "balanceFail": 0,
-      "gpFail": 0,
-      "lineMissing": 0,
-      "noData": 0,
-      "cfs": 0
-    },
-    {
-      "period": "2026_Q2",
-      "action": "fetched",
-      "requested": 65,
-      "rateLimitedMissed": 0,
-      "balanceFail": 0,
-      "gpFail": 0,
-      "lineMissing": 0,
-      "noData": 0,
-      "cfs": 0
+      "balanceFail": 6,
+      "gpFail": 3,
+      "lineMissing": 47,
+      "noData": 91,
+      "cfs": 5
     }
   ]
 }
