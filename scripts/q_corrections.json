@@ -1,0 +1,376 @@
+{
+ "fixes": [
+  {
+   "stockCode": "260660",
+   "period": "2025_Q3",
+   "rceptNo": "20251114000300",
+   "items": [
+    "revenue",
+    "cogs",
+    "grossProfit",
+    "sga",
+    "rd",
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20251114000300) 확인: 3개월 값이 누적 − 앞 분기 누적과 같음 (DART API 값 오류)"
+  }
+ ],
+ "keep": [
+  {
+   "stockCode": "0041B0",
+   "period": "2026_Q2",
+   "rceptNo": "20260812000671",
+   "items": [
+    "sga",
+    "opIncome",
+    "pretax"
+   ],
+   "basis": "공시 원문(접수번호 20260812000671) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "004720",
+   "period": "2025_Q2",
+   "rceptNo": "20250819000245",
+   "items": [
+    "revenue",
+    "grossProfit",
+    "sga",
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20250819000245) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "005110",
+   "period": "2026_Q2",
+   "rceptNo": "20260813001177",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20260813001177) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "005110",
+   "period": "2026_Q3",
+   "rceptNo": "20261113000423",
+   "items": [
+    "sga",
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261113000423) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "0068Y0",
+   "period": "2026_Q2",
+   "rceptNo": "20260807000278",
+   "items": [
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20260807000278) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "0088D0",
+   "period": "2026_Q2",
+   "rceptNo": "20260814003820",
+   "items": [
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20260814003820) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "0098T0",
+   "period": "2026_Q3",
+   "rceptNo": "20261116000307",
+   "items": [
+    "opIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261116000307) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "010600",
+   "period": "2026_Q2",
+   "rceptNo": "20260811000413",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20260811000413) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "010600",
+   "period": "2026_Q3",
+   "rceptNo": "20261116000037",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261116000037) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "023910",
+   "period": "2024_Q3",
+   "rceptNo": "20241114000511",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20241114000511) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "086900",
+   "period": "2025_Q2",
+   "rceptNo": "20250814000625",
+   "items": [
+    "revenue",
+    "cogs",
+    "grossProfit",
+    "sga",
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20250814000625) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "206650",
+   "period": "2026_Q3",
+   "rceptNo": "20261113000054",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261113000054) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "214390",
+   "period": "2025_Q2",
+   "rceptNo": "20250814002932",
+   "items": [
+    "cogs",
+    "grossProfit",
+    "sga",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20250814002932) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "214390",
+   "period": "2025_Q3",
+   "rceptNo": "20251114002597",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20251114002597) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "234690",
+   "period": "2024_Q2",
+   "rceptNo": "20240814004316",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20240814004316) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "271980",
+   "period": "2026_Q3",
+   "rceptNo": "20261116001430",
+   "items": [
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261116001430) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "372320",
+   "period": "2026_Q3",
+   "rceptNo": "20261113001156",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261113001156) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "424870",
+   "period": "2026_Q2",
+   "rceptNo": "20260814002612",
+   "items": [
+    "sga",
+    "rd"
+   ],
+   "basis": "공시 원문(접수번호 20260814002612) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "474930",
+   "period": "2026_Q3",
+   "rceptNo": "20261116001677",
+   "items": [
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261116001677) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "482690",
+   "period": "2026_Q2",
+   "rceptNo": "20260813001234",
+   "items": [
+    "sga",
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20260813001234) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  },
+  {
+   "stockCode": "486990",
+   "period": "2026_Q3",
+   "rceptNo": "20261113001136",
+   "items": [
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "공시 원문(접수번호 20261113001136) 확인: 3개월 값이 DART 값과 같음 (앞 분기 재작성·반올림 차이) → 보정 안 함"
+  }
+ ],
+ "unverified": [
+  {
+   "stockCode": "005940",
+   "period": "2026_Q2",
+   "rceptNo": "20260814002484",
+   "items": [
+    "sga",
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20260814002484"
+  },
+  {
+   "stockCode": "005940",
+   "period": "2026_Q3",
+   "rceptNo": "20261113000872",
+   "items": [
+    "opIncome",
+    "pretax"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20261113000872"
+  },
+  {
+   "stockCode": "006220",
+   "period": "2026_Q2",
+   "rceptNo": "20260814004057",
+   "items": [
+    "sga",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20260814004057"
+  },
+  {
+   "stockCode": "006220",
+   "period": "2026_Q3",
+   "rceptNo": "20261116001181",
+   "items": [
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20261116001181"
+  },
+  {
+   "stockCode": "023760",
+   "period": "2026_Q2",
+   "rceptNo": "20260814002624",
+   "items": [
+    "sga",
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20260814002624"
+  },
+  {
+   "stockCode": "071050",
+   "period": "2026_Q2",
+   "rceptNo": "20260814002697",
+   "items": [
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20260814002697"
+  },
+  {
+   "stockCode": "071050",
+   "period": "2026_Q3",
+   "rceptNo": "20261113001144",
+   "items": [
+    "opIncome",
+    "pretax"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20261113001144"
+  },
+  {
+   "stockCode": "086790",
+   "period": "2026_Q2",
+   "rceptNo": "20260814003800",
+   "items": [
+    "opIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20260814003800"
+  },
+  {
+   "stockCode": "086790",
+   "period": "2026_Q3",
+   "rceptNo": "20261116001351",
+   "items": [
+    "opIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20261116001351"
+  },
+  {
+   "stockCode": "139130",
+   "period": "2026_Q3",
+   "rceptNo": "20261116001599",
+   "items": [
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20261116001599"
+  },
+  {
+   "stockCode": "175330",
+   "period": "2026_Q2",
+   "rceptNo": "20261116000949",
+   "items": [
+    "sga",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20261116000949"
+  },
+  {
+   "stockCode": "279570",
+   "period": "2026_Q2",
+   "rceptNo": "20260814003251",
+   "items": [
+    "opIncome",
+    "pretax",
+    "netIncome"
+   ],
+   "basis": "원문 대조 불가(단위가 원이 아니거나 숫자를 못 찾음) → 보정 안 함 · 접수 20260814003251"
+  }
+ ]
+}

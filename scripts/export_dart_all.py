@@ -18,6 +18,7 @@ FIELDS_DOC = {
     '2값 항목': 'assets, liabilities, equity = [당기말, 전기말]',
     'sga': '손익계산서에 적힌 판관비(연구개발비를 따로 적는 회사는 제외된 값)', 'rd': '따로 적힌 연구개발비',
     'sgaTotal': '매출총이익 − 영업이익 (회사 간 비교용 판관비)',
+    'fixed': '(있을 때만) 3개월 값을 공시 원문 대조 후 누적 − 앞 분기 누적으로 보정한 항목 이름 목록',
 }
 
 
@@ -54,6 +55,8 @@ def main():
                 rec[k] = a[k]
             for k in TWO:
                 rec[k] = a[k]
+            if c.get('fixed'):
+                rec['fixed'] = c['fixed']   # 3개월 값을 '누적 − 앞 분기 누적'으로 보정한 항목 (원래 값은 verify 파일에 기록)
             records.append(rec)
 
     out = {'generatedAt': datetime.now().strftime('%Y-%m-%d %H:%M'), 'unit': 'KRW(원)',

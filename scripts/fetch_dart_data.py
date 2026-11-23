@@ -368,6 +368,65 @@ async def fetch_all_async(todo, year, reprt_code, quarter, checkpoint_path=None)
     return results, len(retry_later)
 
 
+# ───────────────────────── 3개월 값 보정 ─────────────────────────
+Q_ITEMS = ['revenue', 'cogs', 'grossProfit', 'sga', 'rd', 'opIncome', 'pretax', 'netIncome']
+
+
+def load_q_cfg():
+    p = os.path.join(HERE, 'q_corrections.json')
+    if os.path.exists(p):
+        with open(p, encoding='utf-8') as f:
+            return json.load(f)
+    return {'fixes': [], 'keep': [], 'unverified': []}
+
+
+def apply_q_corrections(year, quarter, companies):
+    """q_corrections.json 'fixes'(공시 원문으로 DART API 오류가 확인된 항목)만 3개월 값을 '누적 − 앞 분기 누적'으로 보정.
+    누적 값은 건드리지 않고, 원래 값은 fixedFrom 에 남긴다. 앞 분기 누적이 없으면 보정하지 않고 unchecked 로 표시."""
+    prevq = {'Q2': 'Q1', 'Q3': 'Q2'}.get(quarter)
+    key = f'{year}_{quarter}'
+    entries = [e for e in load_q_cfg()['fixes'] if e['period'] == key]
+    if not prevq or not entries:
+        return 0
+    pp = os.path.join(BASE_DIR, 'data', f'financial_{year}_{prevq}.json')
+    prev = json.load(open(pp, encoding='utf-8'))['companies'] if os.path.exists(pp) else {}
+    pick = lambda d, sc: d.get(sc.lstrip('0')) or d.get(sc)
+    n = 0
+    for e in entries:
+        rec, prc = pick(companies, e['stockCode']), pick(prev, e['stockCode'])
+        a, pa = (rec or {}).get('amounts'), (prc or {}).get('amounts')
+        if not a:
+            continue
+        if not pa:
+            rec['unchecked'] = sorted(set(rec.get('unchecked', [])) | set(e['items']))
+            continue
+        orig, done = dict(rec.get('fixedFrom', {})), list(rec.get('fixed', []))
+        mark = lambda k, old: (orig.setdefault(k, old), done.append(k) if k not in done else None)
+        for k in e['items']:
+            y, py = a[k][1], pa[k][1]
+            if y is None or py is None:
+                rec['unchecked'] = sorted(set(rec.get('unchecked', [])) | {k})
+                continue
+            if a[k][0] != y - py:
+                mark(k, a[k][0])
+                a[k][0] = y - py
+                n += 1
+        if 'gpDerived' in (rec.get('flags') or []):
+            r0, c0 = a['revenue'][0], a['cogs'][0]
+            g = (r0 - c0) if None not in (r0, c0) else None
+            if g != a['grossProfit'][0]:
+                mark('grossProfit', a['grossProfit'][0])
+                a['grossProfit'][0] = g
+        g0, o0 = a['grossProfit'][0], a['opIncome'][0]
+        s = (g0 - o0) if None not in (g0, o0) else None
+        if s != a['sgaTotal'][0]:
+            mark('sgaTotal', a['sgaTotal'][0])
+            a['sgaTotal'][0] = s
+        if done:
+            rec['fixed'], rec['fixedFrom'], rec['fixedBasis'] = done, orig, e['basis']
+    return n
+
+
 # ───────────────────────── 검증 리포트 ─────────────────────────
 DAEWON = {  # 2026 Q3 대원제약 별도 누적 (기대값)
     'revenue': 407_804_204_837, 'cogs': 209_369_743_881, 'opIncome': 5_211_484_411,
@@ -440,16 +499,35 @@ def write_verify(year, quarter, companies, names, target_codes):
     if prevq:
         pp = os.path.join(BASE_DIR, 'data', f'financial_{year}_{prevq}.json')
         prev = json.load(open(pp, encoding='utf-8'))['companies'] if os.path.exists(pp) else {}
-        qmis = []
+        cfg = load_q_cfg()
+        status = {(e['stockCode'], e['period'], it): st for st in ('keep', 'unverified') for e in cfg[st] for it in e['items']}
+        label = {'keep': '원문 확인: DART 값 유지(앞 분기 재작성·반올림)', 'unverified': '원문 대조 불가'}
+        qmis, nocheck = [], 0
+        L.append('## 8-a. 3개월 값 보정 (원문으로 DART API 오류가 확인된 항목만) — 누적 값은 그대로')
+        fx = []
+        for sc, r in sorted(full.items()):
+            for k in (r.get('fixed') or []):
+                orig = (r.get('fixedFrom') or {}).get(k)
+                basis = '보정된 값으로 매출총이익 − 영업이익 재계산' if k == 'sgaTotal' else r.get('fixedBasis', '')
+                fx.append(f'| {nm(sc)}({sc.zfill(6)}) | {k} | {_fmt(orig)} | {_fmt(r["amounts"][k][0])} | {basis} |')
+        if fx:
+            L.append(f'\n{len(fx)}건\n\n| 회사 | 항목 | 원래 값(DART API) | 보정 값 | 근거 |\n|---|---|---:|---:|---|')
+            L += fx
+        else:
+            L.append('\n없음')
+        L.append('')
         for sc, r in sorted(full.items()):
             pa = (prev.get(sc) or {}).get('amounts')
             if not pa:
+                nocheck += 1
                 continue
-            for k, lab in (('revenue', '매출'), ('opIncome', '영업이익'), ('netIncome', '순이익')):
+            for k in Q_ITEMS:
                 q, y, py = r['amounts'][k][0], r['amounts'][k][1], pa[k][1]
                 if None not in (q, y, py) and y - py != q:
-                    qmis.append(f'{nm(sc)}({sc.zfill(6)}) {lab}: 3개월 {q:,} ≠ 누적−앞분기 누적 {y-py:,} (차 {q-(y-py):,}) · 접수 {r.get("rceptNo")}')
-        section('8. 3개월 값 ≠ (누적 − 앞 분기 누적) — 공시 정정 또는 DART 자료 오류 가능', qmis)
+                    st = status.get((sc.zfill(6), key, k))
+                    qmis.append(f'{nm(sc)}({sc.zfill(6)}) {k}: 3개월 {q:,} ≠ 누적−앞분기 누적 {y-py:,} (차 {q-(y-py):,}) · {label.get(st, "원문 미대조 — python scripts/check_q_mismatch.py 실행 필요")} · 접수 {r.get("rceptNo")}')
+        section('8-b. 3개월 값 ≠ (누적 − 앞 분기 누적)이지만 보정하지 않고 표시만 남긴 항목', qmis)
+        L.append(f'(앞 분기 데이터가 이전 형식이라 일관성 검사를 못 한 회사: {nocheck}곳)\n')
 
     if year == '2026' and quarter == 'Q3':
         r = companies.get('3220') or companies.get('003220')
@@ -561,6 +639,26 @@ def main():
     for t in tg['targets']:
         names[t['code']] = t['name']
 
+    if '--fix-only' in sys.argv:   # 이미 받은 2·3분기 파일에 q_corrections.json 보정만 다시 적용 (API 호출 없음)
+        total = 0
+        for fn in sorted(os.listdir(os.path.join(BASE_DIR, 'data'))):
+            m = re.match(r'financial_(\d{4})_(Q2|Q3)\.json$', fn)
+            if not m:
+                continue
+            p = os.path.join(BASE_DIR, 'data', fn)
+            with open(p, encoding='utf-8') as fh:
+                doc = json.load(fh)
+            n = apply_q_corrections(m.group(1), m.group(2), doc['companies'])
+            with open(p, 'w', encoding='utf-8') as fh:
+                json.dump(doc, fh, ensure_ascii=False)
+            write_verify(m.group(1), m.group(2), doc['companies'], names, target_codes)
+            total += n
+        print(f'보정 적용: {total}개 항목')
+        sys.path.insert(0, HERE)
+        import export_dart_all
+        export_dart_all.main()
+        return
+
     only = [a.split('=', 1)[1] for a in sys.argv[1:] if a.startswith('--codes=')]
     if only:   # 예: --codes=069620,260660 --force  (해당 종목만 다시 받아 기존 파일에 병합)
         want = {c.zfill(6) for c in only[0].split(',') if c}
@@ -610,6 +708,7 @@ def main():
         new, rl_missed = asyncio.run(fetch_all_async(todo, year, reprt_code, quarter, output_path + '.ckpt'))
         merged = dict(existing)
         merged.update(new)
+        apply_q_corrections(year, quarter, merged)
         if revenue_ratio(merged, len(stock_to_corp)) == 0 and not existing:
             print('  매출 데이터가 전혀 없어 파일을 저장하지 않습니다 (공시 전이거나 오류).\n')
             run_log.append({'period': f'{year}_{quarter}', 'action': 'no-data-not-saved'})
