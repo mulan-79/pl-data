@@ -3,3 +3,10 @@ Thumbs.db
 *.log
 node_modules/
 .wrangler/
+corp_code_extracted/
+corp_code.zip
+
+# DART API 키 (공개 저장소 — 절대 커밋 금지)
+.dart_key
+.env
+*.ckpt

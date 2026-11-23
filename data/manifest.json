@@ -1,7 +1,14 @@
 {
-  "updated_at": "2026-09-03",
-  "latest": "2026_Q2",
+  "updated_at": "2026-11-23",
+  "latest": "2026_Q3",
   "periods": [
+    {
+      "key": "2026_Q3",
+      "year": "2026",
+      "quarter": "Q3",
+      "label": "2026년 3분기(누적)",
+      "prevLabel": "2025년 3분기 대비"
+    },
     {
       "key": "2026_Q2",
       "year": "2026",
