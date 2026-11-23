@@ -1,11 +1,53 @@
 {
-  "run_at": "2026-11-23 14:44:55",
+  "run_at": "2026-11-23 05:55:05",
   "mode": "전 종목",
   "periods": [
     {
+      "period": "2025_annual",
+      "action": "skipped",
+      "revenueRatio": 0.956
+    },
+    {
+      "period": "2025_Q1",
+      "action": "skipped",
+      "revenueRatio": 0.923
+    },
+    {
+      "period": "2025_Q2",
+      "action": "skipped",
+      "revenueRatio": 0.939
+    },
+    {
+      "period": "2025_Q3",
+      "action": "skipped",
+      "revenueRatio": 0.939
+    },
+    {
+      "period": "2026_Q1",
+      "action": "fetched",
+      "requested": 169,
+      "rateLimitedMissed": 0,
+      "balanceFail": 0,
+      "gpFail": 0,
+      "lineMissing": 39,
+      "noData": 45,
+      "cfs": 0
+    },
+    {
+      "period": "2026_Q2",
+      "action": "fetched",
+      "requested": 161,
+      "rateLimitedMissed": 0,
+      "balanceFail": 0,
+      "gpFail": 0,
+      "lineMissing": 43,
+      "noData": 42,
+      "cfs": 0
+    },
+    {
       "period": "2026_Q3",
       "action": "fetched",
-      "requested": 5,
+      "requested": 181,
       "rateLimitedMissed": 0,
       "balanceFail": 6,
       "gpFail": 3,
